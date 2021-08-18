@@ -1347,6 +1347,7 @@ void player::disp_info()
         draw_tip( w_tip, *this, race, ctxt );
     } );
 
+    // STATS
     catacurses::window w_stats;
     catacurses::window w_stats_border;
     border_helper::border_info &border_stats = borders.add_border();
@@ -1371,6 +1372,7 @@ void player::disp_info()
         draw_stats_tab( w_stats, *this, line, curtab );
     } );
 
+    // TRAITS
     unsigned int trait_win_size_y = 0;
     catacurses::window w_traits;
     catacurses::window w_traits_border;
@@ -1393,6 +1395,7 @@ void player::disp_info()
         draw_traits_tab( w_traits, line, curtab, traitslist, trait_win_size_y );
     } );
 
+    // BIONICS
     unsigned int bionics_win_size_y = 0;
     catacurses::window w_bionics;
     catacurses::window w_bionics_border;
@@ -1417,6 +1420,7 @@ void player::disp_info()
         draw_bionics_tab( w_bionics, *this, line, curtab, bionicslist, bionics_win_size_y );
     } );
 
+    // ENCUMBRANCE
     catacurses::window w_encumb;
     catacurses::window w_encumb_border;
     border_helper::border_info &border_encumb = borders.add_border();
@@ -1434,6 +1438,7 @@ void player::disp_info()
         draw_encumbrance_tab( w_encumb, *this, line, curtab );
     } );
 
+    // EFFECTS
     catacurses::window w_effects;
     catacurses::window w_effects_border;
     border_helper::border_info &border_effects = borders.add_border();
@@ -1454,6 +1459,7 @@ void player::disp_info()
         draw_effects_tab( w_effects, line, curtab, effect_name_and_text, effect_win_size_y );
     } );
 
+    // PROFICIENCIES
     unsigned int proficiency_win_size_y = 0;
     const point profstart = point( grid_width * 2 + 2, infooffsetybottom + effect_win_size_y + 1 );
     catacurses::window w_proficiencies;
@@ -1479,6 +1485,7 @@ void player::disp_info()
         draw_proficiencies_tab( w_proficiencies, line, *this, curtab );
     } );
 
+    // SKILLS
     unsigned int skill_win_size_y = 0;
     catacurses::window w_skills;
     catacurses::window w_skills_border;
@@ -1505,6 +1512,7 @@ void player::disp_info()
         draw_skills_tab( w_skills, *this, line, curtab, skillslist, skill_win_size_y );
     } );
 
+    // info panel
     catacurses::window w_info;
     catacurses::window w_info_border;
     border_helper::border_info &border_info = borders.add_border();
@@ -1526,6 +1534,7 @@ void player::disp_info()
                           traitslist, bionicslist, effect_name_and_text, skillslist );
     } );
 
+    // SPEED
     catacurses::window w_speed;
     catacurses::window w_speed_border;
     border_helper::border_info &border_speed = borders.add_border();
