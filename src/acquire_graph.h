@@ -1,0 +1,1 @@
+void acquire_graph();
