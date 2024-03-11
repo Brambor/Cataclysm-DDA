@@ -224,6 +224,8 @@ std::string action_ident( action_id act )
             return "wear";
         case ACTION_TAKE_OFF:
             return "take_off";
+        case ACTION_ACQUIRE_GRAPH:
+            return "acquire_graph";
         case ACTION_EAT:
             return "eat";
         case ACTION_OPEN_CONSUME:

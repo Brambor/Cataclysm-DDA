@@ -2505,6 +2505,12 @@
   },
   {
     "type": "keybinding",
+    "name": "Acquire graph",
+    "category": "DEFAULTMODE",
+    "id": "acquire_graph"
+  },
+  {
+    "type": "keybinding",
     "name": "Consume item (all items)",
     "category": "DEFAULTMODE",
     "id": "eat",
