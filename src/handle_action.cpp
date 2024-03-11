@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "acquire_graph.h"
 #include "action.h"
 #include "activity_actor_definitions.h"
 #include "activity_type.h"
@@ -2563,6 +2564,10 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
 
         case ACTION_TAKE_OFF:
             takeoff();
+            break;
+
+        case ACTION_ACQUIRE_GRAPH:
+            acquire_graph();
             break;
 
         case ACTION_EAT:
