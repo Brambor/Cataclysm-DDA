@@ -108,32 +108,36 @@ void my_demo_ui::draw_controls()
     ImGui::TableSetupColumn( "itemo resuloto counto" );
     ImGui::TableSetupColumn( "itemo byproducoto counto" );
 
-    for( size_t i = 0; i < data_items.size(); i++ ) {
-        item ity( std::get<1>( data_items[i] ), calendar::turn_zero );
+    ImGuiListClipper clipper;
+    clipper.Begin( data_items.size() );
+    while( clipper.Step() ) {
+        for( int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++ ) {
+            item ity( std::get<1>( data_items[i] ), calendar::turn_zero );
 
-        ImGui::TableNextColumn();
-        draw_colored_text( ity.symbol(), ity.color() );
+            ImGui::TableNextColumn();
+            draw_colored_text( ity.symbol(), ity.color() );
 
-        std::string i_name = std::get<0>( data_items[i] );
-        if( std::get<2>( data_items[i] ) != nullptr ) {
-            i_name += "<color_dark_gray>(V)</color>";
+            std::string i_name = std::get<0>( data_items[i] );
+            if( std::get<2>( data_items[i] ) != nullptr ) {
+                i_name += "<color_dark_gray>(V)</color>";
+            }
+            if( !std::get<1>( data_items[i] )->snippet_category.empty() ) {
+                i_name += "<color_yellow>(S)</color>";
+            }
+
+            ImGui::TableNextColumn();
+            draw_colored_text( i_name.c_str(), c_white );
+
+            const itype_id &iid = std::get<1>( data_items[i] )->get_id();
+
+            ImGui::TableNextColumn();
+            int count = find_default( crafting_result_count, iid, 0 );
+            ImGui::Text( "%d", count );
+
+            ImGui::TableNextColumn();
+            count = find_default( crafting_byproduct_count, iid, 0 );
+            ImGui::Text( "%d", count );
         }
-        if( !std::get<1>( data_items[i] )->snippet_category.empty() ) {
-            i_name += "<color_yellow>(S)</color>";
-        }
-
-        ImGui::TableNextColumn();
-        draw_colored_text( i_name.c_str(), c_white );
-
-        const itype_id &iid = std::get<1>( data_items[i] )->get_id();
-
-        ImGui::TableNextColumn();
-        int count = find_default( crafting_result_count, iid, 0 );
-        ImGui::Text( "%d", count );
-
-        ImGui::TableNextColumn();
-        count = find_default( crafting_byproduct_count, iid, 0 );
-        ImGui::Text( "%d", count );
     }
 
     ImGui::EndTable();
