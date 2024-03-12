@@ -27,6 +27,17 @@
 #include "type_id.h"
 #include "ui_manager.h"
 
+enum class crafting_source : int {
+    product,
+    byproduct,
+};
+
+struct recipe_source {
+    recipe_source( const recipe_id &rin, const crafting_source &sin )
+        : r( rin ), s( sin ) {};
+    const recipe_id &r;
+    const crafting_source &s;
+};
 
 class my_demo_ui : public cataimgui::window
 {
@@ -44,6 +55,9 @@ class my_demo_ui : public cataimgui::window
         std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> data_items;
         std::map<const itype_id, int> crafting_result_count;
         std::map<const itype_id, int> crafting_byproduct_count;
+        std::map<const itype_id, std::vector<std::pair<recipe_id, crafting_source>>> from_crafting;
+        int selected_id = -1;
+        std::string msg;
 };
 
 inline int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
@@ -56,7 +70,7 @@ inline int find_default( const std::map<const itype_id, int> &m, const itype_id 
     return default_value;
 }
 
-my_demo_ui::my_demo_ui() : cataimgui::window( _( "ImGui Demo Screen" ) )
+my_demo_ui::my_demo_ui() : cataimgui::window( _( "Acquire Graph" ) )
 {
     // ITEM SOURCE COUNTS
     std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> opts;
@@ -83,11 +97,22 @@ my_demo_ui::my_demo_ui() : cataimgui::window( _( "ImGui Demo Screen" ) )
         }
         crafting_result_count[r_id] += 1;
 
+
+        if( !from_crafting.count( r_id ) ) {
+            from_crafting[r_id] = {};
+        }
+        from_crafting[r_id].emplace_back( it->first, crafting_source::product );
+
         for( /*std::map<itype_id, int>*/ auto const& [key, _] : it->second.get_byproducts() ) {
             if( !crafting_byproduct_count.count( key ) ) {
                 crafting_byproduct_count[key] = 0;
             }
             crafting_byproduct_count[key] += 1;
+
+            if( !from_crafting.count( key ) ) {
+                from_crafting[key] = {};
+            }
+            from_crafting[key].emplace_back( it->first, crafting_source::byproduct );
         }
     }
 }
@@ -99,14 +124,21 @@ cataimgui::bounds my_demo_ui::get_bounds()
 
 void my_demo_ui::draw_controls()
 {
+    ImGui::Text( "selected_id: %d", selected_id );
+
+    const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
+    ImVec2 outer_size = ImVec2( 0.0f, TEXT_BASE_HEIGHT * 20 );
     if( ! ImGui::BeginTable( "ACQUIRE_GRAPH", 4,
-                             ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable | ImGuiTableColumnFlags_WidthFixed ) ) {
+                             ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable
+                             | ImGuiTableFlags_BordersOuter,
+                             outer_size ) ) {
         return;
     }
     ImGui::TableSetupColumn( "?", 0, ImGui::CalcTextSize( "0" ).x );
     ImGui::TableSetupColumn( "itemo namae" );
     ImGui::TableSetupColumn( "itemo resuloto counto" );
     ImGui::TableSetupColumn( "itemo byproducoto counto" );
+    ImGui::TableHeadersRow();
 
     ImGuiListClipper clipper;
     clipper.Begin( data_items.size() );
@@ -115,6 +147,28 @@ void my_demo_ui::draw_controls()
             item ity( std::get<1>( data_items[i] ), calendar::turn_zero );
 
             ImGui::TableNextColumn();
+            if( ImGui::Selectable( ( "##" + std::to_string( i ) ).c_str(), selected_id == i,
+                                   ImGuiSelectableFlags_SpanAllColumns )
+              ) {
+                selected_id = i;
+                if( from_crafting.count( ity.typeId() ) ) {
+                    msg = "";
+                    int recipe_n = 0;
+                    for( /*recipe_id, crafting_source*/ const auto& [r_id, cr_src] : from_crafting[ity.typeId()] ) {
+                        msg += "\n";
+                        msg += cr_src == crafting_source::product ? "product" : "byproduct";
+                        msg += " of recipe ";
+                        msg += std::to_string( recipe_n++ );
+                        msg += " with requirements:\n";
+                        msg += r_id.obj().simple_requirements().list_all();
+                    }
+                    msg = _( string_format( "Craftable:%s", msg ) );
+                } else {
+                    msg = _( "There are no sources for this item." );
+                }
+            }
+            ImGui::SameLine();
+
             draw_colored_text( ity.symbol(), ity.color() );
 
             std::string i_name = std::get<0>( data_items[i] );
@@ -139,8 +193,12 @@ void my_demo_ui::draw_controls()
             ImGui::Text( "%d", count );
         }
     }
-
     ImGui::EndTable();
+
+    // For not jagging up when table leaves the screen (msg too long)
+    ImGui::BeginChild( "Descriptions" );
+    ImGui::TextWrapped( "%s", msg.c_str() );
+    ImGui::EndChild();
 }
 
 void my_demo_ui::run()
