@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 
+#include "acquire_graph.h"
 #include "action.h"
 #include "activity_actor_definitions.h"
 #include "bodypart.h"
@@ -412,6 +413,14 @@ diary *avatar::get_avatar_diary()
         a_diary = std::make_unique<diary>();
     }
     return a_diary.get();
+}
+
+acquire_graph *avatar::get_acquire_graph()
+{
+    if( acquire_graph_ptr == nullptr ) {
+        acquire_graph_ptr = std::make_unique<acquire_graph>();
+    }
+    return acquire_graph_ptr.get();
 }
 
 bool avatar::read( item_location &book, item_location ereader )

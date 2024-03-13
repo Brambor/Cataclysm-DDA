@@ -1,27 +1,38 @@
 #include "acquire_graph.h"
 
 #include <algorithm>
-#include <cstddef>
 #include <map>
 #include <memory>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "avatar.h"
 #include "calendar.h"
 #include "cata_imgui.h"
+#include "cata_path.h"
+#include "cata_utility.h"
+#include "catacharset.h"
 #include "color.h"
+#include "filesystem.h"
+#include "flexbuffer_json-inl.h"
+#include "flexbuffer_json.h"
 #include "imgui/imgui.h"
 #include "input_context.h"
 #include "item.h"
 #include "item_factory.h"
 #include "itype.h"
+#include "json.h"
+#include "json_error.h"
 #include "localized_comparator.h"
 #include "output.h"
+#include "path_info.h"
 #include "recipe.h"
 #include "recipe_dictionary.h"
-#include "sdltiles.h"
+#include "requirements.h"
+#include "string_formatter.h"
 #include "translation.h"
 #include "translations.h"
 #include "type_id.h"
@@ -39,10 +50,18 @@ struct recipe_source {
     const crafting_source &s;
 };
 
-class my_demo_ui : public cataimgui::window
+class acquire_graph_impl
+{
+        friend class acquire_graph;
+        friend class acquire_graph_ui;
+    private:
+        int selected_id = -1;
+};
+
+class acquire_graph_ui : public cataimgui::window
 {
     public:
-        my_demo_ui();
+        acquire_graph_ui( acquire_graph_impl *pimpl_in );
         void run();
 
     protected:
@@ -50,14 +69,18 @@ class my_demo_ui : public cataimgui::window
         cataimgui::bounds get_bounds() override;
     private:
         /**
+         * Set `selected_id` to `i` and according `msg`.
+         */
+        void set_selected_id( int i );
+        /**
          * Data for item storage
          */
         std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> data_items;
         std::map<const itype_id, int> crafting_result_count;
         std::map<const itype_id, int> crafting_byproduct_count;
         std::map<const itype_id, std::vector<std::pair<recipe_id, crafting_source>>> from_crafting;
-        int selected_id = -1;
         std::string msg;
+        acquire_graph_impl *pimpl;
 };
 
 inline int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
@@ -70,9 +93,11 @@ inline int find_default( const std::map<const itype_id, int> &m, const itype_id 
     return default_value;
 }
 
-my_demo_ui::my_demo_ui() : cataimgui::window( _( "Acquire Graph" ) )
+acquire_graph_ui::acquire_graph_ui( acquire_graph_impl *pimpl_in )
+    : cataimgui::window( _( "Acquire Graph" ) )
 {
-    // ITEM SOURCE COUNTS
+    pimpl = pimpl_in;
+    // data_items
     std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> opts;
     for( const itype *i : item_controller->all() ) {
         item option( i, calendar::turn_zero );
@@ -115,16 +140,40 @@ my_demo_ui::my_demo_ui() : cataimgui::window( _( "Acquire Graph" ) )
             from_crafting[key].emplace_back( it->first, crafting_source::byproduct );
         }
     }
+    // setup
+    set_selected_id( pimpl->selected_id );
 }
 
-cataimgui::bounds my_demo_ui::get_bounds()
+cataimgui::bounds acquire_graph_ui::get_bounds()
 {
     return { -1.f, -1.f, float( str_width_to_pixels( TERMX ) ), float( str_height_to_pixels( TERMY ) ) };
 }
 
-void my_demo_ui::draw_controls()
+void acquire_graph_ui::set_selected_id( int i )
 {
-    ImGui::Text( "selected_id: %d", selected_id );
+    pimpl->selected_id = i;
+    item ity( std::get<1>( data_items[i] ), calendar::turn_zero );
+    if( from_crafting.count( ity.typeId() ) ) {
+        msg = "";
+        int recipe_n = 0;
+        for( /*recipe_id, crafting_source*/ const auto& [r_id, cr_src] : from_crafting[ity.typeId()] ) {
+            msg += "\n";
+            msg += cr_src == crafting_source::product ? "product" : "byproduct";
+            msg += " of recipe ";
+            msg += std::to_string( recipe_n++ );
+            msg += " with requirements:\n";
+            msg += r_id.obj().simple_requirements().list_all();
+        }
+        msg = _( string_format( "Craftable:%s", msg ) );
+    } else {
+        msg = _( "There are no sources for this item." );
+    }
+
+}
+
+void acquire_graph_ui::draw_controls()
+{
+    ImGui::Text( "selected_id: %d", pimpl->selected_id );
 
     const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
     ImVec2 outer_size = ImVec2( 0.0f, TEXT_BASE_HEIGHT * 20 );
@@ -147,25 +196,10 @@ void my_demo_ui::draw_controls()
             item ity( std::get<1>( data_items[i] ), calendar::turn_zero );
 
             ImGui::TableNextColumn();
-            if( ImGui::Selectable( ( "##" + std::to_string( i ) ).c_str(), selected_id == i,
+            if( ImGui::Selectable( ( "##" + std::to_string( i ) ).c_str(), pimpl->selected_id == i,
                                    ImGuiSelectableFlags_SpanAllColumns )
               ) {
-                selected_id = i;
-                if( from_crafting.count( ity.typeId() ) ) {
-                    msg = "";
-                    int recipe_n = 0;
-                    for( /*recipe_id, crafting_source*/ const auto& [r_id, cr_src] : from_crafting[ity.typeId()] ) {
-                        msg += "\n";
-                        msg += cr_src == crafting_source::product ? "product" : "byproduct";
-                        msg += " of recipe ";
-                        msg += std::to_string( recipe_n++ );
-                        msg += " with requirements:\n";
-                        msg += r_id.obj().simple_requirements().list_all();
-                    }
-                    msg = _( string_format( "Craftable:%s", msg ) );
-                } else {
-                    msg = _( "There are no sources for this item." );
-                }
+                set_selected_id( i );
             }
             ImGui::SameLine();
 
@@ -201,7 +235,7 @@ void my_demo_ui::draw_controls()
     ImGui::EndChild();
 }
 
-void my_demo_ui::run()
+void acquire_graph_ui::run()
 {
     input_context ctxt( "HELP_KEYBINDINGS" );
     ctxt.register_action( "QUIT" );
@@ -222,9 +256,66 @@ void my_demo_ui::run()
     }
 }
 
+// These need to be here so that pimpl works with unique ptr
+acquire_graph::acquire_graph() = default;
+acquire_graph::~acquire_graph() = default;
 
-void acquire_graph()
+void acquire_graph::show()
 {
-    my_demo_ui dui;
+    if( pimpl == nullptr ) {
+        pimpl = std::make_unique<acquire_graph_impl>();
+    }
+    acquire_graph_ui dui( pimpl.get() );
     dui.run();
+}
+
+bool acquire_graph::store()
+{
+    const std::string name = base64_encode( get_avatar().get_save_id() + "_acquire_graph" );
+    cata_path path = PATH_INFO::world_base_save_path() +  "/" + name + ".json";
+    const bool iswriten = write_to_file( path, [&]( std::ostream & fout ) {
+        serialize( fout );
+    }, _( "acquire_graph data" ) );
+    return iswriten;
+}
+
+void acquire_graph::serialize( std::ostream &fout )
+{
+    JsonOut jsout( fout, true );
+    jsout.start_object();
+    serialize( jsout );
+    jsout.end_object();
+}
+
+void acquire_graph::serialize( JsonOut &jsout )
+{
+    if( pimpl == nullptr ) {
+        pimpl = std::make_unique<acquire_graph_impl>();
+    }
+    jsout.member( "selected_id", pimpl->selected_id );  // TODO scroll to it?
+}
+
+void acquire_graph::load()
+{
+    const std::string name = base64_encode( get_avatar().get_save_id() + "_acquire_graph" );
+    cata_path path = PATH_INFO::world_base_save_path() / ( name + ".json" );
+    if( file_exist( path ) ) {
+        read_from_file_json( path, [&]( const JsonValue & jv ) {
+            deserialize( jv );
+        } );
+    }
+}
+
+void acquire_graph::deserialize( const JsonValue &jsin )
+{
+    if( pimpl == nullptr ) {
+        pimpl = std::make_unique<acquire_graph_impl>();
+    }
+    try {
+        JsonObject data = jsin.get_object();
+
+        data.read( "selected_id", pimpl->selected_id );
+    } catch( const JsonError &e ) {
+
+    }
 }

@@ -2567,7 +2567,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             break;
 
         case ACTION_ACQUIRE_GRAPH:
-            acquire_graph();
+            u.get_acquire_graph()->show();
             break;
 
         case ACTION_EAT:
