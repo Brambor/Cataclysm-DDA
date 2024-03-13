@@ -597,7 +597,7 @@ void diary::death_entry()
 {
     bool lasttime = query_yn( _( "Open diary for the last time?" ) );
     if( lasttime ) {
-        show_diary_ui( this );
+        show_diary_ui();
     }
     export_to_txt( true );
 }

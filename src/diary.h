@@ -88,7 +88,7 @@ class diary
         diary();
         virtual ~diary() = default;
         /*static method to open a diary ui*/
-        static void show_diary_ui( diary *c_diary );
+        static void show_diary_ui();
         /*last entry in the diary, will be called after character death */
         void death_entry();
 
