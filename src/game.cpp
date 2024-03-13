@@ -35,6 +35,7 @@
 #endif
 
 #include "achievement.h"
+#include "acquire_graph.h"
 #include "action.h"
 #include "activity_actor_definitions.h"
 #include "activity_handlers.h"
@@ -3081,6 +3082,12 @@ bool game::load( const save_t &name )
                 }
             },
             {
+                _( "Acquire graph" ), [&]()
+                {
+                    u.get_acquire_graph()->load();
+                }
+            },
+            {
                 _( "Memorial" ), [&]()
                 {
                     const cata_path log_filename =
@@ -3330,7 +3337,8 @@ bool game::save_player_data()
     }, _( "quick shortcuts" ) );
 #endif
     const bool saved_diary = u.get_avatar_diary()->store();
-    return saved_data && saved_map_memory && saved_log && saved_diary
+    const bool saved_acquire_graph = u.get_acquire_graph()->store();
+    return saved_data && saved_map_memory && saved_log && saved_diary && saved_acquire_graph
 #if defined(__ANDROID__)
            && saved_shortcuts
 #endif
