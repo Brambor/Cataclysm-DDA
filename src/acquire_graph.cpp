@@ -38,6 +38,19 @@
 #include "type_id.h"
 #include "ui_manager.h"
 
+
+struct AbstractN {
+    virtual std::string name() = 0;
+};
+
+/**
+ * Item a person wants to obtain.
+ */
+struct ItemN : AbstractN {
+    std::string name() override;
+    item itm;
+};
+
 enum class crafting_source : int {
     product,
     byproduct,
@@ -54,8 +67,14 @@ class acquire_graph_impl
 {
         friend class acquire_graph;
         friend class acquire_graph_ui;
+        void add_head( std::shared_ptr<AbstractN> );
+        void add_item( const item &it );
+
+        std::vector<std::shared_ptr<AbstractN>>::iterator heads_begin();
+        std::vector<std::shared_ptr<AbstractN>>::iterator heads_end();
     private:
         int selected_id = -1;
+        std::vector<std::shared_ptr<AbstractN>> graph_heads;
 };
 
 class acquire_graph_ui : public cataimgui::window
@@ -82,6 +101,33 @@ class acquire_graph_ui : public cataimgui::window
         std::string msg;
         acquire_graph_impl *pimpl;
 };
+
+std::string ItemN::name()
+{
+    return itm.display_name();
+}
+
+void acquire_graph_impl::add_head( std::shared_ptr<AbstractN> head )
+{
+    graph_heads.emplace_back( head );
+}
+
+void acquire_graph_impl::add_item( const item &it )
+{
+    std::shared_ptr<ItemN> it_p = std::make_shared<ItemN>();
+    it_p->itm = it;
+    add_head( it_p );
+}
+
+std::vector<std::shared_ptr<AbstractN>>::iterator acquire_graph_impl::heads_begin()
+{
+    return graph_heads.begin();
+}
+
+std::vector<std::shared_ptr<AbstractN>>::iterator acquire_graph_impl::heads_end()
+{
+    return graph_heads.end();
+}
 
 inline int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
                          int default_value = 0 )
@@ -174,6 +220,10 @@ void acquire_graph_ui::set_selected_id( int i )
 void acquire_graph_ui::draw_controls()
 {
     ImGui::Text( "selected_id: %d", pimpl->selected_id );
+    if( pimpl->selected_id != -1 && ImGui::Button( "Add Item Node" ) ) {
+        item itm( std::get<1>( data_items[pimpl->selected_id] ), calendar::turn_zero );
+        pimpl->add_item( itm );
+    }
 
     const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
     ImVec2 outer_size = ImVec2( 0.0f, TEXT_BASE_HEIGHT * 20 );
@@ -229,8 +279,16 @@ void acquire_graph_ui::draw_controls()
     }
     ImGui::EndTable();
 
+
+    std::string node_text = "Nodes selected:";
+    for( auto head_it = pimpl->heads_begin(); head_it != pimpl->heads_end(); ++head_it ) {
+        node_text += "\n";
+        node_text += head_it->get()->name();
+    }
     // For not jagging up when table leaves the screen (msg too long)
     ImGui::BeginChild( "Descriptions" );
+    ImGui::TextWrapped( "%s", node_text.c_str() );
+    ImGui::Separator();
     ImGui::TextWrapped( "%s", msg.c_str() );
     ImGui::EndChild();
 }
