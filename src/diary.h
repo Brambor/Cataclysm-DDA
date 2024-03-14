@@ -63,8 +63,9 @@ struct diary_page {
 };
 
 /// <summary>
-/// diary is connected to the player avatar.
-/// the player is able to add new pages every page saves the current character progression and shows the improvements compared to the previous pages
+/// Diary is connected to the player avatar.
+/// The player is able to add new pages.
+/// Every page saves the current character progression and shows the improvements compared to the previous pages.
 /// The player is also able to add a Text in every page.
 /// </summary>
 class diary
@@ -88,7 +89,7 @@ class diary
         diary();
         virtual ~diary() = default;
         /*static method to open a diary ui*/
-        static void show_diary_ui( diary *c_diary );
+        static void show_diary_ui();
         /*last entry in the diary, will be called after character death */
         void death_entry();
 
