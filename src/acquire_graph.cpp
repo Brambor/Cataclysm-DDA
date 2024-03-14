@@ -67,6 +67,8 @@ class acquire_graph_impl
 {
         friend class acquire_graph;
         friend class acquire_graph_ui;
+    public:
+        acquire_graph_impl();
         void add_head( std::shared_ptr<AbstractN> );
         void add_item( const item &it );
 
@@ -75,6 +77,13 @@ class acquire_graph_impl
     private:
         int selected_id = -1;
         std::vector<std::shared_ptr<AbstractN>> graph_heads;
+        /**
+         * Data for item storage.
+         */
+        std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> data_items;
+        std::map<const itype_id, int> crafting_result_count;
+        std::map<const itype_id, int> crafting_byproduct_count;
+        std::map<const itype_id, std::vector<std::pair<recipe_id, crafting_source>>> from_crafting;
 };
 
 class acquire_graph_ui : public cataimgui::window
@@ -91,13 +100,6 @@ class acquire_graph_ui : public cataimgui::window
          * Set `selected_id` to `i` and according `msg`.
          */
         void set_selected_id( int i );
-        /**
-         * Data for item storage
-         */
-        std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> data_items;
-        std::map<const itype_id, int> crafting_result_count;
-        std::map<const itype_id, int> crafting_byproduct_count;
-        std::map<const itype_id, std::vector<std::pair<recipe_id, crafting_source>>> from_crafting;
         std::string msg;
         acquire_graph_impl *pimpl;
 };
@@ -107,42 +109,8 @@ std::string ItemN::name()
     return itm.display_name();
 }
 
-void acquire_graph_impl::add_head( std::shared_ptr<AbstractN> head )
+acquire_graph_impl::acquire_graph_impl()
 {
-    graph_heads.emplace_back( head );
-}
-
-void acquire_graph_impl::add_item( const item &it )
-{
-    std::shared_ptr<ItemN> it_p = std::make_shared<ItemN>();
-    it_p->itm = it;
-    add_head( it_p );
-}
-
-std::vector<std::shared_ptr<AbstractN>>::iterator acquire_graph_impl::heads_begin()
-{
-    return graph_heads.begin();
-}
-
-std::vector<std::shared_ptr<AbstractN>>::iterator acquire_graph_impl::heads_end()
-{
-    return graph_heads.end();
-}
-
-inline int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
-                         int default_value = 0 )
-{
-    const auto &it = m.find( key );
-    if( it != m.end() ) {
-        return it->second;
-    }
-    return default_value;
-}
-
-acquire_graph_ui::acquire_graph_ui( acquire_graph_impl *pimpl_in )
-    : cataimgui::window( _( "Acquire Graph" ) )
-{
-    pimpl = pimpl_in;
     // data_items
     std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> opts;
     for( const itype *i : item_controller->all() ) {
@@ -186,6 +154,44 @@ acquire_graph_ui::acquire_graph_ui( acquire_graph_impl *pimpl_in )
             from_crafting[key].emplace_back( it->first, crafting_source::byproduct );
         }
     }
+}
+
+void acquire_graph_impl::add_head( std::shared_ptr<AbstractN> head )
+{
+    graph_heads.emplace_back( head );
+}
+
+void acquire_graph_impl::add_item( const item &it )
+{
+    std::shared_ptr<ItemN> it_p = std::make_shared<ItemN>();
+    it_p->itm = it;
+    add_head( it_p );
+}
+
+std::vector<std::shared_ptr<AbstractN>>::iterator acquire_graph_impl::heads_begin()
+{
+    return graph_heads.begin();
+}
+
+std::vector<std::shared_ptr<AbstractN>>::iterator acquire_graph_impl::heads_end()
+{
+    return graph_heads.end();
+}
+
+inline int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
+                         int default_value = 0 )
+{
+    const auto &it = m.find( key );
+    if( it != m.end() ) {
+        return it->second;
+    }
+    return default_value;
+}
+
+acquire_graph_ui::acquire_graph_ui( acquire_graph_impl *pimpl_in )
+    : cataimgui::window( _( "Acquire Graph" ) )
+{
+    pimpl = pimpl_in;
     // setup
     set_selected_id( pimpl->selected_id );
 }
@@ -198,11 +204,12 @@ cataimgui::bounds acquire_graph_ui::get_bounds()
 void acquire_graph_ui::set_selected_id( int i )
 {
     pimpl->selected_id = i;
-    item ity( std::get<1>( data_items[i] ), calendar::turn_zero );
-    if( from_crafting.count( ity.typeId() ) ) {
+    item ity( std::get<1>( pimpl->data_items[i] ), calendar::turn_zero );
+    if( pimpl->from_crafting.count( ity.typeId() ) ) {
         msg = "";
         int recipe_n = 0;
-        for( /*recipe_id, crafting_source*/ const auto& [r_id, cr_src] : from_crafting[ity.typeId()] ) {
+        for( /*recipe_id, crafting_source*/ const auto& [r_id, cr_src]
+                                            : pimpl->from_crafting[ity.typeId()] ) {
             msg += "\n";
             msg += cr_src == crafting_source::product ? "product" : "byproduct";
             msg += " of recipe ";
@@ -221,7 +228,7 @@ void acquire_graph_ui::draw_controls()
 {
     ImGui::Text( "selected_id: %d", pimpl->selected_id );
     if( pimpl->selected_id != -1 && ImGui::Button( "Add Item Node" ) ) {
-        item itm( std::get<1>( data_items[pimpl->selected_id] ), calendar::turn_zero );
+        item itm( std::get<1>( pimpl->data_items[pimpl->selected_id] ), calendar::turn_zero );
         pimpl->add_item( itm );
     }
 
@@ -240,10 +247,10 @@ void acquire_graph_ui::draw_controls()
     ImGui::TableHeadersRow();
 
     ImGuiListClipper clipper;
-    clipper.Begin( data_items.size() );
+    clipper.Begin( pimpl->data_items.size() );
     while( clipper.Step() ) {
         for( int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++ ) {
-            item ity( std::get<1>( data_items[i] ), calendar::turn_zero );
+            item ity( std::get<1>( pimpl->data_items[i] ), calendar::turn_zero );
 
             ImGui::TableNextColumn();
             if( ImGui::Selectable( ( "##" + std::to_string( i ) ).c_str(), pimpl->selected_id == i,
@@ -255,25 +262,25 @@ void acquire_graph_ui::draw_controls()
 
             draw_colored_text( ity.symbol(), ity.color() );
 
-            std::string i_name = std::get<0>( data_items[i] );
-            if( std::get<2>( data_items[i] ) != nullptr ) {
+            std::string i_name = std::get<0>( pimpl->data_items[i] );
+            if( std::get<2>( pimpl->data_items[i] ) != nullptr ) {
                 i_name += "<color_dark_gray>(V)</color>";
             }
-            if( !std::get<1>( data_items[i] )->snippet_category.empty() ) {
+            if( !std::get<1>( pimpl->data_items[i] )->snippet_category.empty() ) {
                 i_name += "<color_yellow>(S)</color>";
             }
 
             ImGui::TableNextColumn();
             draw_colored_text( i_name.c_str(), c_white );
 
-            const itype_id &iid = std::get<1>( data_items[i] )->get_id();
+            const itype_id &iid = std::get<1>( pimpl->data_items[i] )->get_id();
 
             ImGui::TableNextColumn();
-            int count = find_default( crafting_result_count, iid, 0 );
+            int count = find_default( pimpl->crafting_result_count, iid, 0 );
             ImGui::Text( "%d", count );
 
             ImGui::TableNextColumn();
-            count = find_default( crafting_byproduct_count, iid, 0 );
+            count = find_default( pimpl->crafting_byproduct_count, iid, 0 );
             ImGui::Text( "%d", count );
         }
     }
