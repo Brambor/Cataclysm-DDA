@@ -204,6 +204,10 @@ cataimgui::bounds acquire_graph_ui::get_bounds()
 void acquire_graph_ui::set_selected_id( int i )
 {
     pimpl->selected_id = i;
+    if( i == -1 ) {   // First load
+        msg = _( "No recipe selected." );
+        return;
+    }
     item ity( std::get<1>( pimpl->data_items[i] ), calendar::turn_zero );
     if( pimpl->from_crafting.count( ity.typeId() ) ) {
         msg = "";
