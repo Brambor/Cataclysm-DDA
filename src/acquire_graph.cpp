@@ -318,7 +318,7 @@ void acquire_graph_ui::run()
 
     while( is_open ) {
         ui_manager::redraw();
-        action = ctxt.handle_input( 5 );
+        action = ctxt.handle_input( 17 );
         if( action == "QUIT" ) {
             break;
         }
