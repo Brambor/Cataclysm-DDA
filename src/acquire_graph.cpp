@@ -39,6 +39,7 @@
 #include "type_id.h"
 #include "ui_manager.h"
 
+bool OPTIMIZE_AWAY_OR = true;
 
 static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
 static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH |
@@ -99,6 +100,13 @@ struct AbstractN {
             return expanded ? "true" : "false";
         };
         virtual const std::vector<std::shared_ptr<AbstractN>> iterate_children() = 0;
+        /**
+         * It has to have exactly one child in iterate_children.
+         * Also some further condition may need to be satsfied.
+         */
+        virtual bool optimized_away() {
+            return false;
+        };
         /**
          * Expand this node, if not previousely expanded.
          */
@@ -170,6 +178,9 @@ struct OrN : AbstractN {
         std::string name() override {
             return "Or Node";
         }
+        bool optimized_away() override {
+            return OPTIMIZE_AWAY_OR && items.size() == 1;
+        };
         const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
             return items;
         }
@@ -376,6 +387,10 @@ void acquire_graph_ui::set_selected_id( int i )
 
 void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_impl *pimpl )
 {
+    if( row_node.get()->optimized_away() ) {
+        show_table_rec( row_node.get()->iterate_children().front(), pimpl );
+        return;
+    }
     ImGui::TableNextColumn();
     // after ## add pointer to the Node this is based on as a unique ID
     const std::string &unique_id = std::to_string( reinterpret_cast< unsigned long long >
@@ -398,6 +413,7 @@ void show_table( acquire_graph_impl *pimpl )
 {
     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
 
+    ImGui::Checkbox( "OPTIMIZE_AWAY_OR", &OPTIMIZE_AWAY_OR );
     if( ImGui::BeginTable( "mything", 2, flags ) ) {
         ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide );
         ImGui::TableSetupColumn( "Expanded", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f );
