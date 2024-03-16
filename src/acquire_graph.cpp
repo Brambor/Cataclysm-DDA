@@ -11,6 +11,7 @@
 
 #include "avatar.h"
 #include "calendar.h"
+#include "cata_assert.h"
 #include "cata_imgui.h"
 #include "cata_path.h"
 #include "cata_utility.h"
@@ -39,17 +40,12 @@
 #include "ui_manager.h"
 
 
-struct AbstractN {
-    virtual std::string name() = 0;
-};
+static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
+static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH |
+                               ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 
-/**
- * Item a person wants to obtain.
- */
-struct ItemN : AbstractN {
-    std::string name() override;
-    item itm;
-};
+struct AbstractN;
+
 
 enum class crafting_source : int {
     product,
@@ -67,13 +63,23 @@ class acquire_graph_impl
 {
         friend class acquire_graph;
         friend class acquire_graph_ui;
+        friend struct AbstractN;
     public:
         acquire_graph_impl();
         void add_head( std::shared_ptr<AbstractN> );
         void add_item( const item &it );
 
-        std::vector<std::shared_ptr<AbstractN>>::iterator heads_begin();
-        std::vector<std::shared_ptr<AbstractN>>::iterator heads_end();
+        std::vector<std::shared_ptr<AbstractN>> get_heads() {
+            return graph_heads;
+        }
+
+        bool in_from_crafting( const itype_id r_id ) {
+            return from_crafting.count( r_id );
+        }
+        std::vector<std::pair<recipe_id, crafting_source>> crafted_from( const itype_id r_id ) {
+            cata_assert( in_from_crafting( r_id ) );
+            return from_crafting.at( r_id );
+        }
     private:
         int selected_id = -1;
         std::vector<std::shared_ptr<AbstractN>> graph_heads;
@@ -84,6 +90,150 @@ class acquire_graph_impl
         std::map<const itype_id, int> crafting_result_count;
         std::map<const itype_id, int> crafting_byproduct_count;
         std::map<const itype_id, std::vector<std::pair<recipe_id, crafting_source>>> from_crafting;
+};
+
+struct AbstractN {
+        virtual ~AbstractN() = default;
+        virtual std::string name() = 0;
+        std::string get_expanded() {
+            return expanded ? "true" : "false";
+        };
+        virtual const std::vector<std::shared_ptr<AbstractN>> iterate_children() = 0;
+        /**
+         * Expand this node, if not previousely expanded.
+         */
+        virtual void expand( acquire_graph_impl *pimpl ) {
+            ( void )pimpl;
+        };
+    protected:
+        bool expanded = false;
+};
+
+struct ObtainN : AbstractN {
+};
+
+/**
+ * Obtain by crafting
+ */
+struct CraftN : ObtainN {
+        CraftN( const itype_id r_id_in ) : r_id( r_id_in ) {}
+        std::string name() override {
+            return "Obtain by crafting";
+        }
+        void expand( acquire_graph_impl *pimpl ) override;
+        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+            return viable_recipes;
+        }
+    private:
+        itype_id r_id;
+        /**
+         * Recipes having i_id as (by)product.
+         */
+        std::vector<std::shared_ptr<AbstractN>> viable_recipes;
+};
+
+/**
+ * Item a person wants to obtain.
+ * Also used in children of RecipeN. This fulfils requirements: components & tools.
+ */
+struct ItemN : AbstractN {
+        ItemN( const item &itm_in ) : itm( itm_in ) {}
+        std::string name() override {
+            return itm.display_name();
+        }
+        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+            return obtain_from;
+        }
+        void expand( acquire_graph_impl *pimpl ) override {
+            if( expanded ) {
+                return;
+            }
+            const itype_id r_id = itm.typeId();
+            if( pimpl->in_from_crafting( r_id ) ) {
+                std::shared_ptr<AbstractN> craft_p = std::make_shared<CraftN>( r_id );
+                obtain_from.emplace_back( craft_p );
+            }
+            expanded = true;
+        }
+    private:
+        item itm;
+        /**
+         * Children are in OR relation (at least one must be satisfied).
+         */
+        std::vector<std::shared_ptr<AbstractN>> obtain_from;
+};
+
+struct OrN : AbstractN {
+        OrN( const std::vector<std::shared_ptr<AbstractN>> &items_in ) : items( items_in ) {
+            expanded = true;
+        }
+        std::string name() override {
+            return "Or Node";
+        }
+        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+            return items;
+        }
+    private:
+        /**
+         *  Satisfied if all childrens are satisfied.
+         */
+        std::vector<std::shared_ptr<AbstractN>> items;
+};
+
+struct AndN : AbstractN {
+        AndN( const std::vector<std::shared_ptr<AbstractN>> &items_in ) : items( items_in ) {
+            expanded = true;
+        }
+        std::string name() override {
+            return "And Node";
+        }
+        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+            return items;
+        }
+        /**
+         *  Satisfied if any children is satisfied.
+         */
+    private:
+        std::vector<std::shared_ptr<AbstractN>> items;
+};
+
+/**
+ * Node for recipe.
+ */
+struct RecipeN : AbstractN {
+        RecipeN( const recipe_id r_id_in, const std::string &by_product_in ) : r_id( r_id_in ),
+            by_product( by_product_in ) {}
+        std::string name() override {
+            return by_product + " of a recipe for " + r_id.obj().result().obj().nname( 1 );
+        }
+        void expand( acquire_graph_impl *pimpl ) override {
+            ( void )pimpl;
+            if( expanded ) {
+                return;
+            }
+            recipe rec = r_id.obj();
+            std::vector<std::shared_ptr<AbstractN>> AND_node;
+            for( const std::vector<tool_comp> &req_and : rec.simple_requirements().get_tools() ) {
+                std::vector<std::shared_ptr<AbstractN>> OR_node;
+                for( const tool_comp &req_or : req_and ) {
+                    item itm( req_or.type, calendar::turn_zero );
+                    OR_node.emplace_back( std::make_shared<ItemN>( itm ) );
+                }
+                AND_node.emplace_back( std::make_shared<OrN>( OR_node ) );
+            }
+            tool_groups = std::make_shared<AndN>( AND_node );
+            expanded = true;
+        }
+        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+            return {tool_groups};
+        }
+    private:
+        recipe_id r_id;
+        std::string by_product;
+        /**
+         * Tools aren't consumed.
+         */
+        std::shared_ptr<AbstractN> tool_groups;
 };
 
 class acquire_graph_ui : public cataimgui::window
@@ -104,9 +254,17 @@ class acquire_graph_ui : public cataimgui::window
         acquire_graph_impl *pimpl;
 };
 
-std::string ItemN::name()
+void CraftN::expand( acquire_graph_impl *pimpl )
 {
-    return itm.display_name();
+    if( expanded ) {
+        return;
+    }
+    for( auto const& /*recipe_id, crafting_source*/[c_r_id, c_src] : pimpl->crafted_from( r_id ) ) {
+        std::shared_ptr<AbstractN> craft_p = std::make_shared<RecipeN>( c_r_id,
+                                             c_src == crafting_source::product ? "product" : "byproduct" );
+        viable_recipes.emplace_back( craft_p );
+    }
+    expanded = true;
 }
 
 acquire_graph_impl::acquire_graph_impl()
@@ -161,21 +319,9 @@ void acquire_graph_impl::add_head( std::shared_ptr<AbstractN> head )
     graph_heads.emplace_back( head );
 }
 
-void acquire_graph_impl::add_item( const item &it )
+void acquire_graph_impl::add_item( const item &itm )
 {
-    std::shared_ptr<ItemN> it_p = std::make_shared<ItemN>();
-    it_p->itm = it;
-    add_head( it_p );
-}
-
-std::vector<std::shared_ptr<AbstractN>>::iterator acquire_graph_impl::heads_begin()
-{
-    return graph_heads.begin();
-}
-
-std::vector<std::shared_ptr<AbstractN>>::iterator acquire_graph_impl::heads_end()
-{
-    return graph_heads.end();
+    add_head( std::make_shared<ItemN>( itm ) );
 }
 
 inline int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
@@ -226,6 +372,43 @@ void acquire_graph_ui::set_selected_id( int i )
         msg = _( "There are no sources for this item." );
     }
 
+}
+
+void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_impl *pimpl )
+{
+    ImGui::TableNextColumn();
+    // after ## add pointer to the Node this is based on as a unique ID
+    const std::string &unique_id = std::to_string( reinterpret_cast< unsigned long long >
+                                   ( reinterpret_cast<void **>( row_node.get() ) ) );
+    bool open = ImGui::TreeNodeEx( ( row_node.get()->name() + "##" + unique_id ).c_str(),
+                                   tree_node_flags );
+
+    ImGui::TableNextColumn();
+    ImGui::Text( "%s", row_node.get()->get_expanded().c_str() );
+    if( open ) {
+        row_node.get()->expand( pimpl );
+        for( const std::shared_ptr<AbstractN> &child : row_node.get()->iterate_children() ) {
+            show_table_rec( child, pimpl );
+        }
+        ImGui::TreePop();
+    }
+}
+
+void show_table( acquire_graph_impl *pimpl )
+{
+    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
+
+    if( ImGui::BeginTable( "mything", 2, flags ) ) {
+        ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide );
+        ImGui::TableSetupColumn( "Expanded", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f );
+        ImGui::TableHeadersRow();
+
+        for( const std::shared_ptr<AbstractN> &head : pimpl->get_heads() ) {
+            show_table_rec( head, pimpl );
+        }
+
+        ImGui::EndTable();
+    }
 }
 
 void acquire_graph_ui::draw_controls()
@@ -290,16 +473,9 @@ void acquire_graph_ui::draw_controls()
     }
     ImGui::EndTable();
 
-
-    std::string node_text = "Nodes selected:";
-    for( auto head_it = pimpl->heads_begin(); head_it != pimpl->heads_end(); ++head_it ) {
-        node_text += "\n";
-        node_text += head_it->get()->name();
-    }
     // For not jagging up when table leaves the screen (msg too long)
     ImGui::BeginChild( "Descriptions" );
-    ImGui::TextWrapped( "%s", node_text.c_str() );
-    ImGui::Separator();
+    show_table( pimpl );
     ImGui::TextWrapped( "%s", msg.c_str() );
     ImGui::EndChild();
 }
