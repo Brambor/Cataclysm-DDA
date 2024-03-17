@@ -145,9 +145,9 @@ struct CraftN : ObtainN {
  * Also used in children of RecipeN. This fulfils requirements: components & tools.
  */
 struct ItemN : AbstractN {
-        ItemN( const item &itm_in ) : itm( itm_in ) {}
+        ItemN( const item &itm_in, int count_in ) : itm( itm_in ), count( count_in ) {}
         std::string name() override {
-            return itm.display_name();
+            return itm.display_name( count ) + " " + std::to_string( count ) + " x";
         }
         const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
             return obtain_from;
@@ -165,6 +165,7 @@ struct ItemN : AbstractN {
         }
     private:
         item itm;
+        int count;
         /**
          * Children are in OR relation (at least one must be satisfied).
          */
@@ -247,7 +248,7 @@ struct RecipeN : AbstractN {
                 std::vector<std::shared_ptr<AbstractN>> OR_node;
                 for( const T &req_or : req_and ) {
                     item itm( req_or.type, calendar::turn_zero );
-                    OR_node.emplace_back( std::make_shared<ItemN>( itm ) );
+                    OR_node.emplace_back( std::make_shared<ItemN>( itm, req_or.count ) );
                 }
                 AND_node.emplace_back( std::make_shared<OrN>( OR_node ) );
             }
@@ -350,7 +351,7 @@ void acquire_graph_impl::add_head( std::shared_ptr<AbstractN> head )
 
 void acquire_graph_impl::add_item( const item &itm )
 {
-    add_head( std::make_shared<ItemN>( itm ) );
+    add_head( std::make_shared<ItemN>( itm, 1 ) );
 }
 
 inline int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
