@@ -45,6 +45,13 @@ static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
 static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH |
                                ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 
+//// see safemode &get_safemode()
+//acquire_graph &get_acquire_graph()
+//{
+//    static acquire_graph single_instance;
+//    return single_instance;
+//}
+
 struct AbstractN;
 
 
@@ -83,6 +90,7 @@ class acquire_graph_impl
         }
     private:
         int selected_id = -1;
+        // TODO shared_ptr_fast?
         std::vector<std::shared_ptr<AbstractN>> graph_heads;
         /**
          * Data for item storage.
@@ -90,15 +98,18 @@ class acquire_graph_impl
         std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> data_items;
         std::map<const itype_id, int> crafting_result_count;
         std::map<const itype_id, int> crafting_byproduct_count;
+        // TODO make the folowing faster?
         std::map<const itype_id, std::vector<std::pair<recipe_id, crafting_source>>> from_crafting;
 };
 
 struct AbstractN {
         virtual ~AbstractN() = default;
+        // { return "ERROR: AbstractN NAME"; }; // TODO `=0` (delete) messes up emplace_back
         virtual std::string name() = 0;
         std::string get_expanded() {
             return expanded ? "true" : "false";
         };
+        // TODO return ref
         virtual const std::vector<std::shared_ptr<AbstractN>> iterate_children() = 0;
         /**
          * It has to have exactly one child in iterate_children.
@@ -110,14 +121,35 @@ struct AbstractN {
         /**
          * Expand this node, if not previousely expanded.
          */
+        // TODO =0 (abstract)
         virtual void expand( acquire_graph_impl *pimpl ) {
             ( void )pimpl;
         };
     protected:
         bool expanded = false;
+
+        // AbstractN *parent;
+        /**
+         * Node is satisfied. Parents can react to that. This is evaulatable.
+         * Individual nodes maybe should store `bool is_satisfied` to remember it.
+         * TODO: One must go!
+         */
+        //virtual bool satisfied();
+        /**
+         * Evals "something" and returns true, if this node is satisfied.
+         * Should cache that result.
+         * TODO: One must go!
+         */
+        //virtual bool eval_satisfied();
+        //bool satisfied_cached = false;
 };
 
+// TODO maybe unnecessary level of abstraction, but it can be removed later
 struct ObtainN : AbstractN {
+
+    // obtain what? in what quantity? - TODO do we want that? - just look at parent for ID, no?
+    // store quantity?
+    // itype_id i_id;
 };
 
 /**
@@ -133,6 +165,7 @@ struct CraftN : ObtainN {
             return viable_recipes;
         }
     private:
+        // alternatively parent -> item -> get_id
         itype_id r_id;
         /**
          * Recipes having i_id as (by)product.
@@ -145,8 +178,10 @@ struct CraftN : ObtainN {
  * Also used in children of RecipeN. This fulfils requirements: components & tools.
  */
 struct ItemN : AbstractN {
+        // TODO make it from item to item_id
         ItemN( const item &itm_in, int count_in ) : itm( itm_in ), count( count_in ) {}
         std::string name() override {
+            // TODO on tool, display_name(1), on item with charges, do something else too
             return itm.display_name( count ) + " " + std::to_string( count ) + " x";
         }
         const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
@@ -165,24 +200,62 @@ struct ItemN : AbstractN {
         }
     private:
         item itm;
+        // this can be number required in components, or in tools, TODO solve for -1
         int count;
         /**
          * Children are in OR relation (at least one must be satisfied).
          */
+        // TODO craft / butcher / smash / deconstruct / find
         std::vector<std::shared_ptr<AbstractN>> obtain_from;
 };
+
+/*TODO instead of these:
+Set count in every ItemN
+TODO describe tool_groups, component_groups as a single AndNode
+    containing (AndNode for tools, AndNode for components, ...)
+Add std::string `label` to AndN to list what is Anding on, then we can do:
+    Item smth
+        Obtainable from crafting
+            Recipe 1
+                And Node recipe Requirements
+                    And Node Tools
+                        Or node - optimize away?
+                            nearby fire (-1) -> nearby fire
+                        Or node
+                            cooker (50)
+                        Or Node
+                            electric needle (50)
+                            sewing set
+                    And Node Components
+                        Or Node
+                            50 thread
+                            50 sinew
+
+// TODO optimize away nodes that have only one child in some cases (And Or)
+*/
+
+/*
+struct ComponentN : ItemN {};
+struct ToolN : ItemN {};
+*/
 
 struct OrN : AbstractN {
         OrN( const std::vector<std::shared_ptr<AbstractN>> &items_in ) : items( items_in ) {
             expanded = true;
         }
         std::string name() override {
+            //if( optimized_away() ) {
+            //    return items.front().first->name();
+            //}
             return "Or Node";
         }
         bool optimized_away() override {
             return OPTIMIZE_AWAY_OR && items.size() == 1;
         };
         const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+            //if( optimized_away() ) {
+            //    return items.front()->iterate_children();
+            //}
             return items;
         }
     private:
@@ -213,15 +286,20 @@ struct AndN : AbstractN {
 
 /**
  * Node for recipe.
+ * We need to Handle multiple results, since we might want all of them
  */
 struct RecipeN : AbstractN {
         RecipeN( const recipe_id r_id_in, const std::string &by_product_in ) : r_id( r_id_in ),
             by_product( by_product_in ) {}
         std::string name() override {
+            // TODO this is probably getting slow, cache it?
             return by_product + " of a recipe for " + r_id.obj().result().obj().nname( 1 );
         }
+        // TODO tools, components, ??
+        // TODO counts
         void expand( acquire_graph_impl *pimpl ) override {
             ( void )pimpl;
+            // recipe -> requirements -> get_tools
             if( expanded ) {
                 return;
             }
@@ -233,9 +311,12 @@ struct RecipeN : AbstractN {
         }
         const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
             std::vector<std::shared_ptr<AbstractN>> ret;
+            // TODO this could probably crash
+            // Water, 3rd byproduct has empty tools
             if( !tool_groups.get()->iterate_children().empty() ) {
                 ret.emplace_back( tool_groups );
             }
+            // TODO can it ever be empty?
             ret.emplace_back( component_groups );
             return ret;
         }
@@ -257,14 +338,47 @@ struct RecipeN : AbstractN {
         recipe_id r_id;
         std::string by_product;
         /**
+         * Products and byproducts this produces, and their count
+         */
+        //std::vector<std::pair<itype, int>> results;
+        /**
          * Tools aren't consumed.
+         * TODO: but maybe their charges can be consumed?
          */
         std::shared_ptr<AbstractN> tool_groups;
         /**
          * Components are consumed.
          */
         std::shared_ptr<AbstractN> component_groups;
+        //int time;
 };
+
+///**
+// * Obtain by finding (in some location).
+// */
+//struct FindN : ObtainN {
+//    /**
+//     * Locations where i_id can be found.
+//     */
+//    std::vector<int /*location_id*/> viable_locations;
+//};
+//
+///**
+// * Hand written (custom) node that can have custom requirements to be satisfied.
+// * The AND and OR are the useful ones, since this one couldn't have children.
+// * But CustomN can be note: "Left amazing boots in town, go get them at x:y:z"
+// * Anything could be created from the AND OR custom nodes.
+// */
+//struct CustomN : AbstractN {
+//};
+//
+//struct CustomAndN : AbstractN {
+//    std::vector<std::shared_ptr<AbstractN>> children_and;
+//};
+//
+//struct CustomOrN : AbstractN {
+//    std::vector<std::shared_ptr<AbstractN>> children_or;
+//};
 
 class acquire_graph_ui : public cataimgui::window
 {
@@ -317,7 +431,9 @@ acquire_graph_impl::acquire_graph_impl()
     std::sort( opts.begin(), opts.end(), localized_compare );
     data_items = opts;
 
+    // from_crafting OLD & NEW
     for( auto it = recipe_dict.begin(); it != recipe_dict.end(); ++it ) {
+        // TODO: ?ref
         const itype_id r_id = it->second.result();
         if( !crafting_result_count.count( r_id ) ) {
             crafting_result_count[r_id] = 0;
@@ -404,6 +520,7 @@ void acquire_graph_ui::set_selected_id( int i )
 
 }
 
+// TODO: it is confusing that row_node is const, but underlying AbstractN is changed
 void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_impl *pimpl )
 {
     if( row_node.get()->optimized_away() ) {
@@ -411,6 +528,8 @@ void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_i
         return;
     }
     ImGui::TableNextColumn();
+    // TODO this hopefully converst the pointer to a unique ID
+    // https://stackoverflow.com/a/76066361/5057078
     // after ## add pointer to the Node this is based on as a unique ID
     const std::string &unique_id = std::to_string( reinterpret_cast< unsigned long long >
                                    ( reinterpret_cast<void **>( row_node.get() ) ) );
@@ -448,6 +567,8 @@ void show_table( acquire_graph_impl *pimpl )
 
 void acquire_graph_ui::draw_controls()
 {
+    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
+
     ImGui::Text( "selected_id: %d", pimpl->selected_id );
     if( pimpl->selected_id != -1 && ImGui::Button( "Add Item Node" ) ) {
         item itm( std::get<1>( pimpl->data_items[pimpl->selected_id] ), calendar::turn_zero );
@@ -455,6 +576,7 @@ void acquire_graph_ui::draw_controls()
     }
 
     const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
+
     ImVec2 outer_size = ImVec2( 0.0f, TEXT_BASE_HEIGHT * 20 );
     if( ! ImGui::BeginTable( "ACQUIRE_GRAPH", 4,
                              ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable
@@ -462,7 +584,8 @@ void acquire_graph_ui::draw_controls()
                              outer_size ) ) {
         return;
     }
-    ImGui::TableSetupColumn( "?", 0, ImGui::CalcTextSize( "0" ).x );
+    // TODO: ( "?", 0, ImGui::CalcTextSize( "0" ).x );
+    ImGui::TableSetupColumn( "?", 0, TEXT_BASE_WIDTH );
     ImGui::TableSetupColumn( "itemo namae" );
     ImGui::TableSetupColumn( "itemo resuloto counto" );
     ImGui::TableSetupColumn( "itemo byproducoto counto" );
@@ -511,6 +634,7 @@ void acquire_graph_ui::draw_controls()
     // For not jagging up when table leaves the screen (msg too long)
     ImGui::BeginChild( "Descriptions" );
     show_table( pimpl );
+    //draw_colored_text( msg.c_str(), c_white );
     ImGui::TextWrapped( "%s", msg.c_str() );
     ImGui::EndChild();
 }
@@ -545,6 +669,9 @@ void acquire_graph::show()
     if( pimpl == nullptr ) {
         pimpl = std::make_unique<acquire_graph_impl>();
     }
+    //bool open_metrics = true;
+    //ImGui::ShowMetricsWindow(/*&open_metrics*/);
+    //open_metrics = false;
     acquire_graph_ui dui( pimpl.get() );
     dui.run();
 }
