@@ -156,6 +156,8 @@ enum action_id : int {
     ACTION_TAKE_OFF,
     /** Open the acquire graph menu */
     ACTION_ACQUIRE_GRAPH,
+    /** Open the item snapshot menu */
+    ACTION_ITEM_SNAPSHOT,
     /** Open the default consume item menu */
     ACTION_EAT,
     /** Open the custom consume item menu */

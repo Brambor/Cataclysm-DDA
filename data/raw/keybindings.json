@@ -2490,6 +2490,12 @@
   },
   {
     "type": "keybinding",
+    "name": "Item Snapshot",
+    "category": "DEFAULTMODE",
+    "id": "item_snapshot"
+  },
+  {
+    "type": "keybinding",
     "name": "Consume item (all items)",
     "category": "DEFAULTMODE",
     "id": "eat",
