@@ -105,6 +105,7 @@
 #include "item_location.h"
 #include "item_pocket.h"
 #include "item_search.h"
+#include "item_snapshot.h"
 #include "item_stack.h"
 #include "iteminfo_query.h"
 #include "itype.h"
@@ -3089,6 +3090,12 @@ bool game::load( const save_t &name )
                 }
             },
             {
+                _( "Item snapshot" ), [&]()
+                {
+                    u.get_item_snapshot()->load();
+                }
+            },
+            {
                 _( "Memorial" ), [&]()
                 {
                     const cata_path log_filename =
@@ -3339,7 +3346,9 @@ bool game::save_player_data()
 #endif
     const bool saved_diary = u.get_avatar_diary()->store();
     const bool saved_acquire_graph = u.get_acquire_graph()->store();
+    const bool saved_item_snapshot = u.get_item_snapshot()->store();
     return saved_data && saved_map_memory && saved_log && saved_diary && saved_acquire_graph
+           && saved_item_snapshot
 #if defined(__ANDROID__)
            && saved_shortcuts
 #endif

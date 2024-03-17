@@ -2407,7 +2407,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             break;
 
         case ACTION_ITEM_SNAPSHOT:
-            item_snapshot();
+            u.get_item_snapshot()->show();
             break;
 
         case ACTION_EAT:
