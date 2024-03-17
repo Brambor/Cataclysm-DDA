@@ -192,11 +192,12 @@ struct OrN : AbstractN {
 };
 
 struct AndN : AbstractN {
-        AndN( const std::vector<std::shared_ptr<AbstractN>> &items_in ) : items( items_in ) {
+        AndN( const std::string &label_in,
+              const std::vector<std::shared_ptr<AbstractN>> &items_in ) : label( label_in ), items( items_in ) {
             expanded = true;
         }
         std::string name() override {
-            return "And Node";
+            return "And Node " + label;
         }
         const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
             return items;
@@ -205,6 +206,7 @@ struct AndN : AbstractN {
          *  Satisfied if any children is satisfied.
          */
     private:
+        std::string label;
         std::vector<std::shared_ptr<AbstractN>> items;
 };
 
@@ -222,29 +224,45 @@ struct RecipeN : AbstractN {
             if( expanded ) {
                 return;
             }
-            recipe rec = r_id.obj();
+            requirement_data reqs = r_id.obj().simple_requirements();
+            tool_groups = std::make_shared<AndN>( "Tools", component_to_node( reqs.get_tools() ) );
+            component_groups = std::make_shared<AndN>( "Components",
+                               component_to_node( reqs.get_components() ) );
+            expanded = true;
+        }
+        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+            std::vector<std::shared_ptr<AbstractN>> ret;
+            if( !tool_groups.get()->iterate_children().empty() ) {
+                ret.emplace_back( tool_groups );
+            }
+            ret.emplace_back( component_groups );
+            return ret;
+        }
+    private:
+        template <typename T> std::vector<std::shared_ptr<AbstractN>> component_to_node(
+                    const std::vector<std::vector<T>> &items
+        ) {
             std::vector<std::shared_ptr<AbstractN>> AND_node;
-            for( const std::vector<tool_comp> &req_and : rec.simple_requirements().get_tools() ) {
+            for( const std::vector<T> &req_and : items ) {
                 std::vector<std::shared_ptr<AbstractN>> OR_node;
-                for( const tool_comp &req_or : req_and ) {
+                for( const T &req_or : req_and ) {
                     item itm( req_or.type, calendar::turn_zero );
                     OR_node.emplace_back( std::make_shared<ItemN>( itm ) );
                 }
                 AND_node.emplace_back( std::make_shared<OrN>( OR_node ) );
             }
-            tool_groups = std::make_shared<AndN>( AND_node );
-            expanded = true;
+            return AND_node;
         }
-        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
-            return {tool_groups};
-        }
-    private:
         recipe_id r_id;
         std::string by_product;
         /**
          * Tools aren't consumed.
          */
         std::shared_ptr<AbstractN> tool_groups;
+        /**
+         * Components are consumed.
+         */
+        std::shared_ptr<AbstractN> component_groups;
 };
 
 class acquire_graph_ui : public cataimgui::window
