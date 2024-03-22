@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "avatar.h"
 #include "color.h"
 #include "cursesdef.h"
 #include "diary.h"
@@ -168,8 +169,9 @@ static std::pair<point, point> diary_window_position()
     };
 }
 
-void diary::show_diary_ui( diary *c_diary )
+void diary::show_diary_ui()
 {
+    diary *c_diary = get_avatar().get_avatar_diary();
     catacurses::window w_diary;
     catacurses::window w_pages;
     catacurses::window w_text;
