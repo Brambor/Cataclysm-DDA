@@ -1,10 +1,12 @@
 #include "item_snapshot.h"
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
+
 #include "calendar.h"
 #include "cata_imgui.h"
 #include "color.h"
@@ -17,6 +19,7 @@
 #include "output.h"
 #include "translation.h"
 #include "translations.h"
+#include "type_id.h"
 #include "ui_manager.h"
 
 
@@ -25,9 +28,11 @@ class item_snapshot_impl
         friend class item_snapshot_ui;
     public:
         item_snapshot_impl();
+        void add_want( itype_id id, int count );
     private:
         int selected_id = -1;
         std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> data_items;
+        std::map<const itype_id, int> item_want;
 };
 
 class item_snapshot_ui : public cataimgui::window
@@ -39,6 +44,7 @@ class item_snapshot_ui : public cataimgui::window
         void draw_controls() override;
         cataimgui::bounds get_bounds() override;
     private:
+        void show_want_table();
         item_snapshot_impl *pimpl;
 };
 
@@ -63,6 +69,13 @@ item_snapshot_impl::item_snapshot_impl()
     data_items = opts;
 }
 
+void item_snapshot_impl::add_want( itype_id id, int count )
+{
+    if( !item_want.count( id ) ) {
+        item_want[id] = 0;
+    }
+    item_want[id] += count;
+}
 
 item_snapshot_ui::item_snapshot_ui( item_snapshot_impl *pimpl_in )
     : cataimgui::window( _( "Item snapshot" ) ), pimpl( pimpl_in )
@@ -74,8 +87,42 @@ cataimgui::bounds item_snapshot_ui::get_bounds()
     return { -1.f, -1.f, float( str_width_to_pixels( TERMX ) ), float( str_height_to_pixels( TERMY ) ) };
 }
 
+void item_snapshot_ui::show_want_table()
+{
+    if( ! ImGui::BeginTable( "ITEM_SNAPSHOT_WANT", 3,
+                             ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersOuter ) ) {
+        return;
+    }
+
+    ImGui::TableSetupColumn( "?", 0, ImGui::CalcTextSize( "0" ).x );
+    ImGui::TableSetupColumn( "itemo namae" );
+    ImGui::TableSetupColumn( "count" );
+    ImGui::TableHeadersRow();
+
+    for( auto const& /*const itype_id, int*/[itm_id, count] : pimpl->item_want ) {
+        item ity( itm_id, calendar::turn_zero, count );
+
+        ImGui::TableNextColumn();
+        draw_colored_text( ity.symbol(), ity.color() );
+
+        ImGui::TableNextColumn();
+        std::string i_name = ity.tname();
+        draw_colored_text( i_name.c_str(), c_white );
+
+        ImGui::TableNextColumn();
+        draw_colored_text( std::to_string( count ), c_white );
+    }
+
+    ImGui::EndTable();
+}
+
 void item_snapshot_ui::draw_controls()
 {
+    ImGui::Text( "selected_id: %d", pimpl->selected_id );
+    if( pimpl->selected_id != -1 && ImGui::Button( "Add Item to Want" ) ) {
+        pimpl->add_want( ( std::get<1>( pimpl->data_items[pimpl->selected_id] ) )->get_id(), 1 );
+    }
+
     const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
     ImVec2 outer_size = ImVec2( 0.0f, TEXT_BASE_HEIGHT * 20 );
     if( ! ImGui::BeginTable( "ITEM_SNAPSHOT", 2,
@@ -117,6 +164,11 @@ void item_snapshot_ui::draw_controls()
         }
     }
     ImGui::EndTable();
+
+    // For not jagging up when table leaves the screen (msg too long)
+    ImGui::BeginChild( "Descriptions" );
+    show_want_table();
+    ImGui::EndChild();
 }
 
 void item_snapshot_ui::run()
