@@ -105,7 +105,7 @@
 #include "item_location.h"
 #include "item_pocket.h"
 #include "item_search.h"
-#include "item_snapshot.h"
+#include "item_snapshot_manager.h"
 #include "item_stack.h"
 #include "iteminfo_query.h"
 #include "itype.h"
@@ -2479,7 +2479,7 @@ input_context get_default_mode_input_context()
     ctxt.register_action( "wear" );
     ctxt.register_action( "take_off" );
     ctxt.register_action( "acquire_graph" );
-    ctxt.register_action( "item_snapshot" );
+    ctxt.register_action( "item_snapshot_manager" );
     ctxt.register_action( "eat" );
     ctxt.register_action( "open_consume" );
     ctxt.register_action( "read" );
@@ -3092,7 +3092,7 @@ bool game::load( const save_t &name )
             {
                 _( "Item snapshot" ), [&]()
                 {
-                    u.get_item_snapshot()->load();
+                    u.get_item_snapshot_manager()->load();
                 }
             },
             {
@@ -3346,9 +3346,9 @@ bool game::save_player_data()
 #endif
     const bool saved_diary = u.get_avatar_diary()->store();
     const bool saved_acquire_graph = u.get_acquire_graph()->store();
-    const bool saved_item_snapshot = u.get_item_snapshot()->store();
+    const bool saved_item_snapshot_manager = u.get_item_snapshot_manager()->store();
     return saved_data && saved_map_memory && saved_log && saved_diary && saved_acquire_graph
-           && saved_item_snapshot
+           && saved_item_snapshot_manager
 #if defined(__ANDROID__)
            && saved_shortcuts
 #endif

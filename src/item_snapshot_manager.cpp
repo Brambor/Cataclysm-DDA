@@ -1,4 +1,4 @@
-#include "item_snapshot.h"
+#include "item_snapshot_manager.h"
 
 #include <algorithm>
 #include <map>
@@ -33,12 +33,12 @@
 #include "ui_manager.h"
 
 
-class item_snapshot_impl
+class item_snapshot_manager_impl
 {
-        friend class item_snapshot;
-        friend class item_snapshot_ui;
+        friend class item_snapshot_manager;
+        friend class item_snapshot_manager_ui;
     public:
-        item_snapshot_impl();
+        item_snapshot_manager_impl();
         void add_want( itype_id id, int count );
     private:
         int selected_id = -1;
@@ -46,20 +46,20 @@ class item_snapshot_impl
         std::map<itype_id, int> item_want;
 };
 
-class item_snapshot_ui : public cataimgui::window
+class item_snapshot_manager_ui : public cataimgui::window
 {
     public:
-        item_snapshot_ui( item_snapshot_impl *pimpl_in );
+        item_snapshot_manager_ui( item_snapshot_manager_impl *pimpl_in );
         void run();
     protected:
         void draw_controls() override;
         cataimgui::bounds get_bounds() override;
     private:
         void show_want_table();
-        item_snapshot_impl *pimpl;
+        item_snapshot_manager_impl *pimpl;
 };
 
-item_snapshot_impl::item_snapshot_impl()
+item_snapshot_manager_impl::item_snapshot_manager_impl()
 {
     // data_items
     std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> opts;
@@ -80,7 +80,7 @@ item_snapshot_impl::item_snapshot_impl()
     data_items = opts;
 }
 
-void item_snapshot_impl::add_want( itype_id id, int count )
+void item_snapshot_manager_impl::add_want( itype_id id, int count )
 {
     if( !item_want.count( id ) ) {
         item_want[id] = 0;
@@ -88,17 +88,17 @@ void item_snapshot_impl::add_want( itype_id id, int count )
     item_want[id] += count;
 }
 
-item_snapshot_ui::item_snapshot_ui( item_snapshot_impl *pimpl_in )
+item_snapshot_manager_ui::item_snapshot_manager_ui( item_snapshot_manager_impl *pimpl_in )
     : cataimgui::window( _( "Item snapshot" ) ), pimpl( pimpl_in )
 {
 }
 
-cataimgui::bounds item_snapshot_ui::get_bounds()
+cataimgui::bounds item_snapshot_manager_ui::get_bounds()
 {
     return { -1.f, -1.f, float( str_width_to_pixels( TERMX ) ), float( str_height_to_pixels( TERMY ) ) };
 }
 
-void item_snapshot_ui::show_want_table()
+void item_snapshot_manager_ui::show_want_table()
 {
     if( ! ImGui::BeginTable( "ITEM_SNAPSHOT_WANT", 3,
                              ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersOuter ) ) {
@@ -127,7 +127,7 @@ void item_snapshot_ui::show_want_table()
     ImGui::EndTable();
 }
 
-void item_snapshot_ui::draw_controls()
+void item_snapshot_manager_ui::draw_controls()
 {
     ImGui::Text( "selected_id: %d", pimpl->selected_id );
     if( pimpl->selected_id != -1 && ImGui::Button( "Add Item to Want" ) ) {
@@ -136,7 +136,7 @@ void item_snapshot_ui::draw_controls()
 
     const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
     ImVec2 outer_size = ImVec2( 0.0f, TEXT_BASE_HEIGHT * 20 );
-    if( ! ImGui::BeginTable( "ITEM_SNAPSHOT", 2,
+    if( ! ImGui::BeginTable( "ITEM_SNAPSHOT_MANAGER", 2,
                              ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable
                              | ImGuiTableFlags_BordersOuter,
                              outer_size ) ) {
@@ -182,7 +182,7 @@ void item_snapshot_ui::draw_controls()
     ImGui::EndChild();
 }
 
-void item_snapshot_ui::run()
+void item_snapshot_manager_ui::run()
 {
     input_context ctxt( "HELP_KEYBINDINGS" );
     ctxt.register_action( "QUIT" );
@@ -204,20 +204,20 @@ void item_snapshot_ui::run()
 }
 
 // These need to be here so that pimpl works with unique ptr
-item_snapshot::item_snapshot() = default;
-item_snapshot::~item_snapshot() = default;
+item_snapshot_manager::item_snapshot_manager() = default;
+item_snapshot_manager::~item_snapshot_manager() = default;
 
-bool item_snapshot::store()
+bool item_snapshot_manager::store()
 {
-    std::string name = base64_encode( get_avatar().get_save_id() + "_item_snapshot" );
+    std::string name = base64_encode( get_avatar().get_save_id() + "_item_snapshot_manager" );
     std::string path = PATH_INFO::world_base_save_path() +  "/" + name + ".json";
     const bool iswriten = write_to_file( path, [&]( std::ostream & fout ) {
         serialize( fout );
-    }, _( "item_snapshot data" ) );
+    }, _( "item_snapshot_manager data" ) );
     return iswriten;
 }
 
-void item_snapshot::serialize( std::ostream &fout )
+void item_snapshot_manager::serialize( std::ostream &fout )
 {
     JsonOut jsout( fout, true );
     jsout.start_object();
@@ -225,17 +225,17 @@ void item_snapshot::serialize( std::ostream &fout )
     jsout.end_object();
 }
 
-void item_snapshot::serialize( JsonOut &jsout )
+void item_snapshot_manager::serialize( JsonOut &jsout )
 {
     if( pimpl == nullptr ) {
-        pimpl = std::make_unique<item_snapshot_impl>();
+        pimpl = std::make_unique<item_snapshot_manager_impl>();
     }
     jsout.member( "item_want", pimpl->item_want );
 }
 
-void item_snapshot::load()
+void item_snapshot_manager::load()
 {
-    std::string name = base64_encode( get_avatar().get_save_id() + "_item_snapshot" );
+    std::string name = base64_encode( get_avatar().get_save_id() + "_item_snapshot_manager" );
     cata_path path = PATH_INFO::world_base_save_path_path() / ( name + ".json" );
     if( file_exist( path ) ) {
         read_from_file_json( path, [&]( const JsonValue & jv ) {
@@ -244,10 +244,10 @@ void item_snapshot::load()
     }
 }
 
-void item_snapshot::deserialize( const JsonValue &jsin )
+void item_snapshot_manager::deserialize( const JsonValue &jsin )
 {
     if( pimpl == nullptr ) {
-        pimpl = std::make_unique<item_snapshot_impl>();
+        pimpl = std::make_unique<item_snapshot_manager_impl>();
     }
     try {
         JsonObject data = jsin.get_object();
@@ -258,11 +258,11 @@ void item_snapshot::deserialize( const JsonValue &jsin )
     }
 }
 
-void item_snapshot::show()
+void item_snapshot_manager::show()
 {
     if( pimpl == nullptr ) {
-        pimpl = std::make_unique<item_snapshot_impl>();
+        pimpl = std::make_unique<item_snapshot_manager_impl>();
     }
-    item_snapshot_ui itm_sn_ui( pimpl.get() );
+    item_snapshot_manager_ui itm_sn_ui( pimpl.get() );
     itm_sn_ui.run();
 }

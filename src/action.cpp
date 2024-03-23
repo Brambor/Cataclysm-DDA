@@ -223,8 +223,8 @@ std::string action_ident( action_id act )
             return "take_off";
         case ACTION_ACQUIRE_GRAPH:
             return "acquire_graph";
-        case ACTION_ITEM_SNAPSHOT:
-            return "item_snapshot";
+        case ACTION_ITEM_SNAPSHOT_MANAGER:
+            return "item_snapshot_manager";
         case ACTION_EAT:
             return "eat";
         case ACTION_OPEN_CONSUME:

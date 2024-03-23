@@ -1,19 +1,19 @@
 #pragma once
-#ifndef CATA_SRC_ITEM_SNAPSHOT_H
-#define CATA_SRC_ITEM_SNAPSHOT_H
+#ifndef CATA_SRC_ITEM_SNAPSHOT_MANAGER_H
+#define CATA_SRC_ITEM_SNAPSHOT_MANAGER_H
 
 #include <iosfwd>
 #include <memory>
 
 class JsonOut;
 class JsonValue;
-class item_snapshot_impl;
+class item_snapshot_manager_impl;
 
-class item_snapshot
+class item_snapshot_manager
 {
     public:
-        item_snapshot();
-        ~item_snapshot();
+        item_snapshot_manager();
+        ~item_snapshot_manager();
         /*serialize and deserialize*/
         bool store();
         void load();
@@ -23,7 +23,7 @@ class item_snapshot
 
         void show();
     private:
-        std::unique_ptr <item_snapshot_impl> pimpl;
+        std::unique_ptr <item_snapshot_manager_impl> pimpl;
 };
 
-#endif // CATA_SRC_ITEM_SNAPSHOT_H
+#endif // CATA_SRC_ITEM_SNAPSHOT_MANAGER_H

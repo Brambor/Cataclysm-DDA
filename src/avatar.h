@@ -31,7 +31,7 @@ class diary;
 class faction;
 class item;
 class item_location;
-class item_snapshot;
+class item_snapshot_manager;
 class JsonObject;
 class JsonOut;
 class mission;
@@ -203,7 +203,7 @@ class avatar : public Character
         //return avatar diary
         diary *get_avatar_diary();
         acquire_graph *get_acquire_graph();
-        item_snapshot *get_item_snapshot();
+        item_snapshot_manager *get_item_snapshot_manager();
 
         // Dialogue and bartering--see npctalk.cpp
         void talk_to( std::unique_ptr<talker> talk_with, bool radio_contact = false,
@@ -416,7 +416,7 @@ class avatar : public Character
         */
         std::unique_ptr <diary> a_diary;
         std::unique_ptr <acquire_graph> acquire_graph_ptr;
-        std::unique_ptr <item_snapshot> item_snapshot_ptr;
+        std::unique_ptr <item_snapshot_manager> item_snapshot_manager_ptr;
         /**
          * The amount of calories spent and gained per day for the last 30 days.
          * the back is popped off and a new one added to the front at midnight each day

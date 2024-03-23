@@ -43,7 +43,7 @@
 #include "inventory.h"
 #include "item.h"
 #include "item_location.h"
-#include "item_snapshot.h"
+#include "item_snapshot_manager.h"
 #include "itype.h"
 #include "iuse.h"
 #include "kill_tracker.h"
@@ -429,12 +429,12 @@ acquire_graph *avatar::get_acquire_graph()
     return acquire_graph_ptr.get();
 }
 
-item_snapshot *avatar::get_item_snapshot()
+item_snapshot_manager *avatar::get_item_snapshot_manager()
 {
-    if( item_snapshot_ptr == nullptr ) {
-        item_snapshot_ptr = std::make_unique<item_snapshot>();
+    if( item_snapshot_manager_ptr == nullptr ) {
+        item_snapshot_manager_ptr = std::make_unique<item_snapshot_manager>();
     }
-    return item_snapshot_ptr.get();
+    return item_snapshot_manager_ptr.get();
 }
 
 bool avatar::read( item_location &book, item_location ereader )

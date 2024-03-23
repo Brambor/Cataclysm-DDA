@@ -52,7 +52,7 @@
 #include "input_context.h"
 #include "item.h"
 #include "item_group.h"
-#include "item_snapshot.h"
+#include "item_snapshot_manager.h"
 #include "itype.h"
 #include "iuse.h"
 #include "level_cache.h"
@@ -2406,8 +2406,8 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             u.get_acquire_graph()->show();
             break;
 
-        case ACTION_ITEM_SNAPSHOT:
-            u.get_item_snapshot()->show();
+        case ACTION_ITEM_SNAPSHOT_MANAGER:
+            u.get_item_snapshot_manager()->show();
             break;
 
         case ACTION_EAT:
