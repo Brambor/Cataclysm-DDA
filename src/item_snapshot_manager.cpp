@@ -55,6 +55,7 @@ class item_snapshot_manager_ui : public cataimgui::window
         void draw_controls() override;
         cataimgui::bounds get_bounds() override;
     private:
+        void show_item_table();
         void show_want_table();
         item_snapshot_manager_impl *pimpl;
 };
@@ -98,42 +99,8 @@ cataimgui::bounds item_snapshot_manager_ui::get_bounds()
     return { -1.f, -1.f, float( str_width_to_pixels( TERMX ) ), float( str_height_to_pixels( TERMY ) ) };
 }
 
-void item_snapshot_manager_ui::show_want_table()
+void item_snapshot_manager_ui::show_item_table()
 {
-    if( ! ImGui::BeginTable( "ITEM_SNAPSHOT_WANT", 3,
-                             ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersOuter ) ) {
-        return;
-    }
-
-    ImGui::TableSetupColumn( "?", 0, ImGui::CalcTextSize( "0" ).x );
-    ImGui::TableSetupColumn( "itemo namae" );
-    ImGui::TableSetupColumn( "count" );
-    ImGui::TableHeadersRow();
-
-    for( auto const& /*const itype_id, int*/[itm_id, count] : pimpl->item_want ) {
-        item ity( itm_id, calendar::turn_zero, count );
-
-        ImGui::TableNextColumn();
-        draw_colored_text( ity.symbol(), ity.color() );
-
-        ImGui::TableNextColumn();
-        std::string i_name = ity.tname();
-        draw_colored_text( i_name.c_str(), c_white );
-
-        ImGui::TableNextColumn();
-        draw_colored_text( std::to_string( count ), c_white );
-    }
-
-    ImGui::EndTable();
-}
-
-void item_snapshot_manager_ui::draw_controls()
-{
-    ImGui::Text( "selected_id: %d", pimpl->selected_id );
-    if( pimpl->selected_id != -1 && ImGui::Button( "Add Item to Want" ) ) {
-        pimpl->add_want( ( std::get<1>( pimpl->data_items[pimpl->selected_id] ) )->get_id(), 1 );
-    }
-
     const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
     ImVec2 outer_size = ImVec2( 0.0f, TEXT_BASE_HEIGHT * 20 );
     if( ! ImGui::BeginTable( "ITEM_SNAPSHOT_MANAGER", 2,
@@ -175,7 +142,44 @@ void item_snapshot_manager_ui::draw_controls()
         }
     }
     ImGui::EndTable();
+}
 
+void item_snapshot_manager_ui::show_want_table()
+{
+    if( ! ImGui::BeginTable( "ITEM_SNAPSHOT_WANT", 3,
+                             ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersOuter ) ) {
+        return;
+    }
+
+    ImGui::TableSetupColumn( "?", 0, ImGui::CalcTextSize( "0" ).x );
+    ImGui::TableSetupColumn( "itemo namae" );
+    ImGui::TableSetupColumn( "count" );
+    ImGui::TableHeadersRow();
+
+    for( auto const& /*const itype_id, int*/[itm_id, count] : pimpl->item_want ) {
+        item ity( itm_id, calendar::turn_zero, count );
+
+        ImGui::TableNextColumn();
+        draw_colored_text( ity.symbol(), ity.color() );
+
+        ImGui::TableNextColumn();
+        std::string i_name = ity.tname();
+        draw_colored_text( i_name.c_str(), c_white );
+
+        ImGui::TableNextColumn();
+        draw_colored_text( std::to_string( count ), c_white );
+    }
+
+    ImGui::EndTable();
+}
+
+void item_snapshot_manager_ui::draw_controls()
+{
+    ImGui::Text( "selected_id: %d", pimpl->selected_id );
+    if( pimpl->selected_id != -1 && ImGui::Button( "Add Item to Want" ) ) {
+        pimpl->add_want( ( std::get<1>( pimpl->data_items[pimpl->selected_id] ) )->get_id(), 1 );
+    }
+    show_item_table();
     // For not jagging up when table leaves the screen (msg too long)
     ImGui::BeginChild( "Descriptions" );
     show_want_table();
