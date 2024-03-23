@@ -7,16 +7,26 @@
 #include <tuple>
 #include <vector>
 
+#include "avatar.h"
 #include "calendar.h"
 #include "cata_imgui.h"
+#include "cata_path.h"
+#include "cata_utility.h"
+#include "catacharset.h"
 #include "color.h"
+#include "filesystem.h"
+#include "flexbuffer_json-inl.h"
+#include "flexbuffer_json.h"
 #include "imgui/imgui.h"
 #include "input_context.h"
 #include "item.h"
 #include "item_factory.h"
 #include "itype.h"
+#include "json.h"
+#include "json_error.h"
 #include "localized_comparator.h"
 #include "output.h"
+#include "path_info.h"
 #include "translation.h"
 #include "translations.h"
 #include "type_id.h"
@@ -25,6 +35,7 @@
 
 class item_snapshot_impl
 {
+        friend class item_snapshot;
         friend class item_snapshot_ui;
     public:
         item_snapshot_impl();
@@ -32,7 +43,7 @@ class item_snapshot_impl
     private:
         int selected_id = -1;
         std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> data_items;
-        std::map<const itype_id, int> item_want;
+        std::map<itype_id, int> item_want;
 };
 
 class item_snapshot_ui : public cataimgui::window
@@ -198,11 +209,53 @@ item_snapshot::~item_snapshot() = default;
 
 bool item_snapshot::store()
 {
-    return true;
+    std::string name = base64_encode( get_avatar().get_save_id() + "_item_snapshot" );
+    std::string path = PATH_INFO::world_base_save_path() +  "/" + name + ".json";
+    const bool iswriten = write_to_file( path, [&]( std::ostream & fout ) {
+        serialize( fout );
+    }, _( "item_snapshot data" ) );
+    return iswriten;
+}
+
+void item_snapshot::serialize( std::ostream &fout )
+{
+    JsonOut jsout( fout, true );
+    jsout.start_object();
+    serialize( jsout );
+    jsout.end_object();
+}
+
+void item_snapshot::serialize( JsonOut &jsout )
+{
+    if( pimpl == nullptr ) {
+        pimpl = std::make_unique<item_snapshot_impl>();
+    }
+    jsout.member( "item_want", pimpl->item_want );
 }
 
 void item_snapshot::load()
 {
+    std::string name = base64_encode( get_avatar().get_save_id() + "_item_snapshot" );
+    cata_path path = PATH_INFO::world_base_save_path_path() / ( name + ".json" );
+    if( file_exist( path ) ) {
+        read_from_file_json( path, [&]( const JsonValue & jv ) {
+            deserialize( jv );
+        } );
+    }
+}
+
+void item_snapshot::deserialize( const JsonValue &jsin )
+{
+    if( pimpl == nullptr ) {
+        pimpl = std::make_unique<item_snapshot_impl>();
+    }
+    try {
+        JsonObject data = jsin.get_object();
+
+        data.read( "item_want", pimpl->item_want );
+    } catch( const JsonError &e ) {
+
+    }
 }
 
 void item_snapshot::show()
