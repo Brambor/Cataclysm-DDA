@@ -585,7 +585,7 @@ void acquire_graph_ui::draw_controls()
         return;
     }
     // TODO: ( "?", 0, ImGui::CalcTextSize( "0" ).x );
-    ImGui::TableSetupColumn( "?", 0, TEXT_BASE_WIDTH );
+    ImGui::TableSetupColumn( "?"/*, 0, TEXT_BASE_WIDTH*/ );
     ImGui::TableSetupColumn( "itemo namae" );
     ImGui::TableSetupColumn( "itemo resuloto counto" );
     ImGui::TableSetupColumn( "itemo byproducoto counto" );
