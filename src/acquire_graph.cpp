@@ -23,6 +23,7 @@
 #include "imgui/imgui.h"
 #include "input_context.h"
 #include "item.h"
+#include "iteminfo_query.h"
 #include "item_factory.h"
 #include "itype.h"
 #include "json.h"
@@ -37,7 +38,10 @@
 #include "translation.h"
 #include "translations.h"
 #include "type_id.h"
+#include "uistate.h"
 #include "ui_manager.h"
+
+#pragma optimize("", off)
 
 bool OPTIMIZE_AWAY_OR = true;
 
@@ -73,7 +77,7 @@ class acquire_graph_impl
         friend class acquire_graph_ui;
         friend struct AbstractN;
     public:
-        acquire_graph_impl();
+        void recalculate();
         void add_head( std::shared_ptr<AbstractN> );
         void add_item( const item &it );
 
@@ -98,6 +102,7 @@ class acquire_graph_impl
         std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> data_items;
         std::map<const itype_id, int> crafting_result_count;
         std::map<const itype_id, int> crafting_byproduct_count;
+        std::map<const itype_id, std::vector<itype_id>> disassembly_from;
         // TODO make the folowing faster?
         std::map<const itype_id, std::vector<std::pair<recipe_id, crafting_source>>> from_crafting;
 };
@@ -411,11 +416,19 @@ void CraftN::expand( acquire_graph_impl *pimpl )
     expanded = true;
 }
 
-acquire_graph_impl::acquire_graph_impl()
+void acquire_graph_impl::recalculate()
 {
     // data_items
     std::vector<std::tuple<std::string, const itype *, const itype_variant_data *>> opts;
     for( const itype *i : item_controller->all() ) {
+        // player didn't see this item yet, don't spoil it!
+        // TODO: should I just iterate over read_items?
+        // TODO: debug - read all items
+
+        // TODO: doesn't work, data_items is empty now.
+        if( !uistate.read_items.count( i->get_id() ) ) {
+            continue;
+        }
         item option( i, calendar::turn_zero );
 
         if( i->variant_kind == itype_variant_kind::gun || i->variant_kind == itype_variant_kind::generic ) {
@@ -427,11 +440,19 @@ acquire_graph_impl::acquire_graph_impl()
         }
         option.clear_itype_variant();
         opts.emplace_back( option.tname( 1, false ), i, nullptr );
+        // DISASSEMVLY
+        //disassembly_from
+        // iterate known items
+        //i.disassemble
+        // add to vector
     }
     std::sort( opts.begin(), opts.end(), localized_compare );
     data_items = opts;
 
     // from_crafting OLD & NEW
+    // TODO: only recipes that player has seen.
+    // TODO: remember recipes in a new var `recipes_read`.
+    //       Otherwise, player would construct a graph that would miss nodes later
     for( auto it = recipe_dict.begin(); it != recipe_dict.end(); ++it ) {
         // TODO: ?ref
         const itype_id r_id = it->second.result();
@@ -495,6 +516,10 @@ cataimgui::bounds acquire_graph_ui::get_bounds()
 
 void acquire_graph_ui::set_selected_id( int i )
 {
+    // TODO selected it is wrong, when NEW read_item is added
+    if( i >= pimpl->data_items.size() ) {
+        i = -1;
+    }
     pimpl->selected_id = i;
     if( i == -1 ) {   // First load
         msg = _( "No recipe selected." );
@@ -636,11 +661,33 @@ void acquire_graph_ui::draw_controls()
     show_table( pimpl );
     //draw_colored_text( msg.c_str(), c_white );
     ImGui::TextWrapped( "%s", msg.c_str() );
+
+    // SHOW SELECTED ITEM's disassembly
+    // TODO: other way around - show all items with this as disassembly
+    if( pimpl->selected_id != -1 ) {
+        std::vector<iteminfo_parts> disassemble = { iteminfo_parts::DESCRIPTION_COMPONENTS_DISASSEMBLE };
+
+        item itm( std::get<1>( pimpl->data_items[ pimpl->selected_id ] ), calendar::turn_zero );
+
+        std::vector<iteminfo> info_v;
+        const iteminfo_query query_v( disassemble );
+        itm.info( info_v, &query_v, 1 );
+
+        const std::string &res = format_item_info( info_v, {} );
+        if( !res.empty() ) {
+            ImGui::TextWrapped( "%s", res.c_str() );
+        } else {
+            ImGui::TextWrapped( "%s", _( "Item doesn't disassemble." ) );
+        }
+    }
+
     ImGui::EndChild();
 }
 
 void acquire_graph_ui::run()
 {
+    // TODO init things
+    pimpl->recalculate();
     input_context ctxt( "HELP_KEYBINDINGS" );
     ctxt.register_action( "QUIT" );
     ctxt.register_action( "SELECT" );
@@ -726,3 +773,5 @@ void acquire_graph::deserialize( const JsonValue &jsin )
 
     }
 }
+
+#pragma optimize("", on)
