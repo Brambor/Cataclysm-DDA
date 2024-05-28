@@ -755,35 +755,37 @@ std::string inventory_selector_preset::get_cell_text( const inventory_entry &ent
         std::string text = cells[cell_index].get_text( entry );
         const item &actual_item = *entry.locations.front();
         const std::string info_display = get_option<std::string>( "DETAILED_CONTAINERS" );
-        // if we want no additional info skip this
-        if( info_display != "NONE" ) {
-            // if we want additional info for all items or it is worn then add the additional info
-            if( info_display == "ALL" || ( info_display == "WORN" &&
-                                           is_worn_id( entry.get_category_ptr()->get_id() ) &&
-                                           actual_item.is_worn_by_player() ) ) {
-                if( cell_index == 0 && !text.empty() &&
-                    actual_item.is_container() && actual_item.has_unrestricted_pockets() ) {
-                    const units::volume total_capacity = actual_item.get_total_capacity( true );
-                    const units::mass total_capacity_weight = actual_item.get_total_weight_capacity( true );
-                    const units::length max_containable_length = actual_item.max_containable_length( true );
-
-                    const units::volume actual_capacity = actual_item.get_total_contained_volume( true );
-                    const units::mass actual_capacity_weight = actual_item.get_total_contained_weight( true );
-
-                    container_data container_data = {
-                        actual_capacity,
-                        total_capacity,
-                        actual_capacity_weight,
-                        total_capacity_weight,
-                        max_containable_length
-                    };
-                    std::string formatted_string = container_data.to_formatted_string( false );
-
-                    text = text + string_format( " %s", formatted_string );
-                }
-            }
+        if(
+            // if we want no additional info skip this
+            info_display == "NONE"
+            // if we don't want additional info for all items and it is not worn then skip it
+            || ( info_display != "ALL" && ( info_display != "WORN"
+                                            || !is_worn_id( entry.get_category_ptr()->get_id() )
+                                            || !actual_item.is_worn_by_player() ) )
+            || cell_index != 0
+            || text.empty()
+            || !actual_item.is_container()
+            || !actual_item.has_unrestricted_pockets()
+        ) {
+            return text;
         }
-        return text;
+        const units::volume total_capacity = actual_item.get_total_capacity( true );
+        const units::mass total_capacity_weight = actual_item.get_total_weight_capacity( true );
+        const units::length max_containable_length = actual_item.max_containable_length( true );
+
+        const units::volume actual_capacity = actual_item.get_total_contained_volume( true );
+        const units::mass actual_capacity_weight = actual_item.get_total_contained_weight( true );
+
+        container_data container_data = {
+            actual_capacity,
+            total_capacity,
+            actual_capacity_weight,
+            total_capacity_weight,
+            max_containable_length
+        };
+        std::string formatted_string = container_data.to_formatted_string( false );
+
+        return text + string_format( " %s", formatted_string );
     } else if( cell_index != 0 ) {
         return replace_colors( cells[cell_index].title );
     } else {
