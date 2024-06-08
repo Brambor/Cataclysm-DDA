@@ -3799,6 +3799,7 @@ void inventory_compare_selector::toggle_entry( inventory_entry *entry )
     const item *it = &*entry->any_item();
     const auto iter = std::find( compared.begin(), compared.end(), it );
 
+    // if not found in compare select it, otherwise deselect it
     entry->chosen_count = iter == compared.end() ? 1 : 0;
 
     if( entry->chosen_count != 0 ) {
@@ -3851,19 +3852,20 @@ void inventory_multiselector::deselect_contained_items()
         inventory_items.push_back( loc_front );
     }
     for( item_location loc_container : inventory_items ) {
-        if( !loc_container->empty() ) {
-            for( inventory_column *col : get_all_columns() ) {
-                for( inventory_entry *selected : col->get_entries( []( const inventory_entry & entry ) {
-                return entry.chosen_count > 0;
-            } ) ) {
-                    if( !selected->is_item() ) {
-                        continue;
-                    }
-                    for( const item *item_contained : loc_container->all_items_ptr() ) {
-                        for( const item_location &selected_loc : selected->locations ) {
-                            if( selected_loc.get_item() == item_contained ) {
-                                set_chosen_count( *selected, 0 );
-                            }
+        if( loc_container->empty() ) {
+            continue;
+        }
+        for( inventory_column *col : get_all_columns() ) {
+            for( inventory_entry *selected : col->get_entries( []( const inventory_entry & entry ) {
+            return entry.chosen_count > 0;
+        } ) ) {
+                if( !selected->is_item() ) {
+                    continue;
+                }
+                for( const item *item_contained : loc_container->all_items_ptr() ) {
+                    for( const item_location &selected_loc : selected->locations ) {
+                        if( selected_loc.get_item() == item_contained ) {
+                            set_chosen_count( *selected, 0 );
                         }
                     }
                 }
@@ -3874,17 +3876,17 @@ void inventory_multiselector::deselect_contained_items()
         for( inventory_entry *selected : col->get_entries(
         []( const inventory_entry & entry ) {
         return entry.is_item() && entry.chosen_count > 0 && entry.locations.front()->is_frozen_liquid() &&
-                   //Frozen liquids can be selected if it have the SHREDDED flag.
+                   // Frozen liquid can be selected if it has the SHREDDED flag.
                    !entry.locations.front()->has_flag( STATIC( flag_id( "SHREDDED" ) ) ) &&
                    (
-                       ( //Frozen liquids on the map are not selectable if they can't be crushed.
+                       ( // Frozen liquids on the map are not selectable if they can't be crushed.
                            entry.locations.front().where() == item_location::type::map &&
                            !get_player_character().can_crush_frozen_liquid( entry.locations.front() ).success() ) ||
-                       ( //Weapon in hand is can selectable.
+                       ( // Weapon in hand is selectable.
                            entry.locations.front().where() == item_location::type::character &&
                            !entry.locations.front().has_parent() &&
                            entry.locations.front() != get_player_character().used_weapon() ) ||
-                       ( //Frozen liquids are unselectable if they don't have SHREDDED flag and can't be crushed in a container.
+                       ( // Frozen liquids are unselectable if they don't have SHREDDED flag and can't be crushed in a container.
                            entry.locations.front().has_parent() &&
                            entry.locations.front().where() == item_location::type::container &&
                            !get_player_character().can_crush_frozen_liquid( entry.locations.front() ).success() )
@@ -4278,9 +4280,8 @@ void pickup_selector::remove_from_to_use( item_location &it )
         if( iter->first == it ) {
             to_use.erase( iter );
             return;
-        } else {
-            iter++;
         }
+        iter++;
     }
 }
 
@@ -4440,6 +4441,7 @@ unload_selector::unload_selector( Character &p,
     set_hint( hint_string() );
 }
 
+// TODO add this for disassembly menu fot `T`ravel to
 std::string unload_selector::hint_string()
 {
     std::string mode = uistate.unload_auto_contain ? _( "Auto" ) : _( "Manual" );

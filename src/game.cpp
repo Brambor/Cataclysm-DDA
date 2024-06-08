@@ -8713,6 +8713,7 @@ game::vmenu_ret game::list_items( const std::vector<map_item_stack> &item_list )
             recalc_unread = highlight_unread_items;
         } else if( action == "FILTER" ) {
             ui.invalidate_ui();
+            // TODO get this:
             string_input_popup()
             .title( _( "Filter:" ) )
             .width( 55 )
