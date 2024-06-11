@@ -2872,6 +2872,7 @@ void activity_handlers::travel_do_turn( player_activity *act, Character *you )
     map &here = get_map();
     tripoint_bub_ms centre_sub = here.bub_from_abs( waypoint );
     if( !here.passable( centre_sub ) ) {
+        // todo change 2 to higher number. 2 is too little in forests
         tripoint_range<tripoint_bub_ms> candidates = here.points_in_radius( centre_sub, 2 );
         for( const tripoint_bub_ms &elem : candidates ) {
             if( here.passable( elem ) ) {
