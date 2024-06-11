@@ -387,6 +387,20 @@ class avatar : public Character
 
         const mood_face_id &character_mood_face( bool clear_cache = false ) const;
 
+        /**
+         * Clear the path and start recording a new one.
+         */
+        void start_recording_path();
+        /**
+         * Record a single step of path.
+         * If this step makes a loop, remove the whole loop.
+         */
+        void record_step( const tripoint_abs_ms &new_pos );
+        /**
+         * Stop recording path and return the path recorded.
+         */
+        std::vector<tripoint_abs_ms> stop_recording_path();
+
     private:
         npc &get_shadow_npc();
 
@@ -442,6 +456,11 @@ class avatar : public Character
 
         // true when the space is still visible when aiming
         cata::mdarray<bool, point_bub_ms> aim_cache;
+
+    public:
+        bool recording_path;
+        /// Path for ACTION_AUTO_PATH_MODE
+        std::vector<tripoint_abs_ms> recorded_path;
 };
 
 avatar &get_avatar();

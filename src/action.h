@@ -226,6 +226,8 @@ enum action_id : int {
     ACTION_CONTROL_VEHICLE,
     /** Turn auto travel mode on/off */
     ACTION_TOGGLE_AUTO_TRAVEL_MODE,
+    /** Travel on the precise path */
+    ACTION_AUTO_PATH_MODE,
     /** Turn safemode on/off, while leaving autosafemode intact */
     ACTION_TOGGLE_SAFEMODE,
     /** Turn automatic triggering of safemode on/off */

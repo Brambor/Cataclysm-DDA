@@ -2547,6 +2547,7 @@ input_context get_default_mode_input_context()
     ctxt.register_action( "sleep" );
     ctxt.register_action( "control_vehicle" );
     ctxt.register_action( "auto_travel_mode" );
+    ctxt.register_action( "auto_path_mode" );
     ctxt.register_action( "safemode" );
     ctxt.register_action( "autosafe" );
     ctxt.register_action( "autoattack" );
@@ -13873,14 +13874,16 @@ void game::climb_down_using( const tripoint &examp, climbing_aid_id aid_id, bool
 
 namespace cata_event_dispatch
 {
-void avatar_moves( const tripoint &old_abs_pos, const avatar &u, const map &m )
+void avatar_moves( const tripoint &old_abs_pos, avatar &u, const map &m )
 {
     const tripoint new_pos = u.pos();
     const tripoint new_abs_pos = m.getabs( new_pos );
+    const tripoint_abs_ms loc = m.getglobal( new_pos );
     mtype_id mount_type;
     if( u.is_mounted() ) {
         mount_type = u.mounted_creature->type->id;
     }
+    u.record_step( loc );
     get_event_bus().send<event_type::avatar_moves>( mount_type, m.ter( new_pos ).id(),
             u.current_movement_mode(), u.is_underwater(), new_pos.z );
 

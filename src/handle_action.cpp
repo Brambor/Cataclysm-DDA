@@ -2646,6 +2646,45 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             add_msg( m_info, auto_travel_mode ? _( "Auto travel mode ON!" ) : _( "Auto travel mode OFF!" ) );
             break;
 
+        case ACTION_AUTO_PATH_MODE: {
+            if( player_character.recording_path ) {
+                add_msg( m_info, _( "Auto path: path recorded." ) );
+                player_character.recording_path = false;
+                break;
+            }
+            const std::vector<tripoint_abs_ms> &path = player_character.stop_recording_path();
+
+            if( path.empty() ) {
+                add_msg( m_info, _( "Auto path: empty, start new." ) );
+                player_character.start_recording_path();
+                break;
+            }
+            if( path.size() <= 1 ) {
+                add_msg( m_info, _( "Auto path: size 1, start new." ) );
+                player_character.start_recording_path();
+                break;
+            }
+
+            std::vector<tripoint_bub_ms> route;
+            if( player_character.pos_bub() == get_map().bub_from_abs( path.front() ) ) {
+                add_msg( m_info, _( "Auto path: from start." ) );
+                for( auto it = std::next( path.begin() ); it != path.end(); ++it ) {
+                    route.emplace_back( get_map().bub_from_abs( *it ) );
+                }
+            } else if( player_character.pos_bub() == get_map().bub_from_abs( path.back() ) ) {
+                add_msg( m_info, _( "Auto path: from end." ) );
+                for( auto it = std::next( path.rbegin() ); it != path.rend(); ++it ) {
+                    route.emplace_back( get_map().bub_from_abs( *it ) );
+                }
+            } else {
+                add_msg( m_info, _( "Auto path: player doesn't stand at start or end. Recording new path." ) );
+                player_character.start_recording_path();
+                break;
+            }
+            player_character.set_destination( route );
+            break;
+        }
+
         case ACTION_TOGGLE_SAFEMODE:
             if( safe_mode == SAFE_MODE_OFF ) {
                 set_safe_mode( SAFE_MODE_ON );

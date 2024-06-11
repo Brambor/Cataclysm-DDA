@@ -1259,6 +1259,39 @@ bool avatar::cant_see( const tripoint_bub_ms &p )
     return aim_cache[p.x()][p.y()];
 }
 
+void avatar::start_recording_path()
+{
+    recording_path = true;
+    recorded_path.clear();
+    record_step( get_location() );
+}
+
+void avatar::record_step( const tripoint_abs_ms &new_pos )
+{
+    if( !recording_path ) {
+        debugmsg( _( "Auto path: record_step called when not recording a path." ) );
+        return;
+    }
+    // if a loop exists find it and remove it
+    for( auto it = recorded_path.begin(); it != recorded_path.end(); ++it ) {
+        if( *it == new_pos ) {
+            const size_t old_path_len = recorded_path.size();
+            recorded_path.erase( it + 1, recorded_path.end() );
+            add_msg( m_info, _( "Auto path: made a loop! Old path len: %s, new path len: %s" ),
+                     old_path_len,
+                     recorded_path.size() );
+            return;
+        }
+    }
+    recorded_path.emplace_back( new_pos );
+}
+
+std::vector<tripoint_abs_ms> avatar::stop_recording_path()
+{
+    recording_path = false;
+    return recorded_path;
+}
+
 void avatar::rebuild_aim_cache()
 {
     aim_cache_dirty =
