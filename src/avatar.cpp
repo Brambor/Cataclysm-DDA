@@ -54,7 +54,6 @@
 #include "martialarts.h"
 #include "messages.h"
 #include "mission.h"
-#include "morale.h"
 #include "move_mode.h"
 #include "mutation.h"
 #include "npc.h"
@@ -84,8 +83,6 @@
 #include "veh_type.h"
 #include "vehicle.h"
 #include "vpart_position.h"
-
-class monfaction;
 
 static const bionic_id bio_cloak( "bio_cloak" );
 static const bionic_id bio_soporific( "bio_soporific" );
@@ -137,7 +134,6 @@ static const ter_str_id ter_t_pit_shallow( "t_pit_shallow" );
 
 static const trait_id trait_ARACHNID_ARMS( "ARACHNID_ARMS" );
 static const trait_id trait_ARACHNID_ARMS_OK( "ARACHNID_ARMS_OK" );
-static const trait_id trait_CENOBITE( "CENOBITE" );
 static const trait_id trait_CHITIN2( "CHITIN2" );
 static const trait_id trait_CHITIN3( "CHITIN3" );
 static const trait_id trait_CHITIN_FUR3( "CHITIN_FUR3" );
@@ -944,26 +940,6 @@ mfaction_id avatar::get_monster_faction() const
     return monfaction_player.id();
 }
 
-void avatar::disp_morale()
-{
-    int equilibrium = calc_focus_equilibrium();
-
-    int sleepiness_penalty = 0;
-    const int sleepiness_cap = focus_equilibrium_sleepiness_cap( equilibrium );
-
-    if( sleepiness_cap < equilibrium ) {
-        sleepiness_penalty = equilibrium - sleepiness_cap;
-        equilibrium = sleepiness_cap;
-    }
-
-    int pain_penalty = 0;
-    if( get_perceived_pain() && !has_trait( trait_CENOBITE ) ) {
-        pain_penalty = calc_focus_equilibrium( true ) - equilibrium - sleepiness_penalty;
-    }
-
-    morale->display( equilibrium, pain_penalty, sleepiness_penalty );
-}
-
 void avatar::reset_stats()
 {
     const int current_stim = get_stim();
@@ -1257,6 +1233,40 @@ bool avatar::cant_see( const tripoint_bub_ms &p )
     }
 
     return aim_cache[p.x()][p.y()];
+}
+
+void avatar::start_recording_path()
+{
+    recording_path = true;
+    recorded_path.clear();
+    record_step( get_location() );
+}
+
+void avatar::record_step( const tripoint_abs_ms &new_pos )
+{
+    if( !recording_path ) {
+        // todo remove bool recording_path
+        return;
+    }
+    // if a loop exists find it and remove it
+    // todo optimize, probably with unordered set
+    for( auto it = recorded_path.begin(); it != recorded_path.end(); ++it ) {
+        if( *it == new_pos ) {
+            const size_t old_path_len = recorded_path.size();
+            recorded_path.erase( it + 1, recorded_path.end() );
+            add_msg( m_info, _( "Auto path: made a loop! Old path len: %s, new path len: %s" ),
+                     old_path_len,
+                     recorded_path.size() );
+            return;
+        }
+    }
+    recorded_path.emplace_back( new_pos );
+}
+
+std::vector<tripoint_abs_ms> avatar::stop_recording_path()
+{
+    recording_path = false;
+    return recorded_path;
 }
 
 void avatar::rebuild_aim_cache()

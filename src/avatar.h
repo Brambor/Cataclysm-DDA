@@ -159,10 +159,6 @@ class avatar : public Character
         nc_color basic_symbol_color() const override;
         int print_info( const catacurses::window &w, int vStart, int vLines, int column ) const override;
 
-        /** Provides the window and detailed morale data */
-        void disp_morale();
-        /** Opens the medical window */
-        void disp_medical();
         /** Resets stats, and applies effects in an idempotent manner */
         void reset_stats() override;
         /** Resets all missions before saving character to template */
@@ -387,6 +383,20 @@ class avatar : public Character
 
         const mood_face_id &character_mood_face( bool clear_cache = false ) const;
 
+        /**
+         * Clear the path and start recording a new one.
+         */
+        void start_recording_path();
+        /**
+         * Record a single step of path. Only if `recording_path` is true.
+         * If this step makes a loop, remove the whole loop.
+         */
+        void record_step( const tripoint_abs_ms &new_pos );
+        /**
+         * Stop recording path and return the path recorded.
+         */
+        std::vector<tripoint_abs_ms> stop_recording_path();
+
     private:
         npc &get_shadow_npc();
 
@@ -442,6 +452,11 @@ class avatar : public Character
 
         // true when the space is still visible when aiming
         cata::mdarray<bool, point_bub_ms> aim_cache;
+
+    public:
+        bool recording_path;
+        /// Path for ACTION_AUTO_PATH_MODE
+        std::vector<tripoint_abs_ms> recorded_path;
 };
 
 avatar &get_avatar();

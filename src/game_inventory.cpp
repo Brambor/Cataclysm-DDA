@@ -1143,6 +1143,7 @@ item_location game_menus::inv::consume_meds( avatar &you )
     get_consume_needs_hint( you ) );
 }
 
+// TODO why not inherit from inventory_selector_preset ??
 class activatable_inventory_preset : public pickup_inventory_preset
 {
     public:
