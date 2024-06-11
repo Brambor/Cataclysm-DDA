@@ -392,7 +392,7 @@ class avatar : public Character
          */
         void start_recording_path();
         /**
-         * Record a single step of path.
+         * Record a single step of path. Only if `recording_path` is true.
          * If this step makes a loop, remove the whole loop.
          */
         void record_step( const tripoint_abs_ms &new_pos );

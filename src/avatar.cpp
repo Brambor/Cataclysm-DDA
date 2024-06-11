@@ -1270,7 +1270,6 @@ void avatar::record_step( const tripoint_abs_ms &new_pos )
 {
     if( !recording_path ) {
         // todo remove bool recording_path
-        debugmsg( _( "Auto path: record_step called when not recording a path." ) );
         return;
     }
     // if a loop exists find it and remove it
