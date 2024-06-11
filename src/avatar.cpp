@@ -1269,10 +1269,12 @@ void avatar::start_recording_path()
 void avatar::record_step( const tripoint_abs_ms &new_pos )
 {
     if( !recording_path ) {
+        // todo remove bool recording_path
         debugmsg( _( "Auto path: record_step called when not recording a path." ) );
         return;
     }
     // if a loop exists find it and remove it
+    // todo optimize, probably with unordered set
     for( auto it = recorded_path.begin(); it != recorded_path.end(); ++it ) {
         if( *it == new_pos ) {
             const size_t old_path_len = recorded_path.size();

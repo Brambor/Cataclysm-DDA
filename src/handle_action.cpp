@@ -2647,6 +2647,8 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             break;
 
         case ACTION_AUTO_PATH_MODE: {
+            // Very temporary
+            // TODO have more than just the last path
             if( player_character.recording_path ) {
                 add_msg( m_info, _( "Auto path: path recorded." ) );
                 player_character.recording_path = false;
@@ -2682,6 +2684,8 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                 break;
             }
             player_character.set_destination( route );
+            // todo activity title and progress
+            // player_character.assign_activity( workout_activity_actor( player_character.pos() ) );
             break;
         }
 

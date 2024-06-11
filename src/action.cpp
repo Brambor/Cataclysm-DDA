@@ -289,6 +289,7 @@ std::string action_ident( action_id act )
         case ACTION_TOGGLE_AUTO_TRAVEL_MODE:
             return "auto_travel_mode";
         case ACTION_AUTO_PATH_MODE:
+            // todo better place?
             return "auto_path_mode";
         case ACTION_TOGGLE_SAFEMODE:
             return "safemode";
@@ -975,6 +976,7 @@ action_id handle_action_menu()
             REGISTER_ACTION( ACTION_FIRE_BURST );
             REGISTER_ACTION( ACTION_PICK_STYLE );
             REGISTER_ACTION( ACTION_TOGGLE_AUTO_TRAVEL_MODE );
+            // todo better place?
             REGISTER_ACTION( ACTION_AUTO_PATH_MODE );
             REGISTER_ACTION( ACTION_TOGGLE_SAFEMODE );
             REGISTER_ACTION( ACTION_TOGGLE_AUTOSAFE );
