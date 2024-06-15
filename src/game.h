@@ -188,9 +188,8 @@ class game
          *  @param msg string to display whilst loading prompt
          *  @param packs content packs to load in correct dependent order
          *  @param ui structure for load progress display
-         *  @return true if all packs were found, false if any were missing
          */
-        bool load_packs( const std::string &msg, const std::vector<mod_id> &packs, loading_ui &ui );
+        void load_packs( const std::string &msg, const std::vector<mod_id> &packs, loading_ui &ui );
 
         /**
          * @brief Should be invoked whenever options change.
@@ -1329,7 +1328,7 @@ namespace cata_event_dispatch
 // @param p The point the avatar moved from in absolute coordinates
 // @param u The avatar (should have already moved to the new pos)
 // @param m The map the avatar is moving on
-void avatar_moves( const tripoint &old_abs_pos, const avatar &u, const map &m );
+void avatar_moves( const tripoint &old_abs_pos, avatar &u, const map &m );
 } // namespace cata_event_dispatch
 
 #endif // CATA_SRC_GAME_H

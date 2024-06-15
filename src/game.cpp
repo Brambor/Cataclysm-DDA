@@ -37,6 +37,7 @@
 #endif
 
 #include "achievement.h"
+#include "acquire_graph.h"
 #include "action.h"
 #include "activity_actor_definitions.h"
 #include "activity_handlers.h"
@@ -161,6 +162,7 @@
 #include "panels.h"
 #include "past_achievements_info.h"
 #include "path_info.h"
+#include "path_manager.h"
 #include "pathfinding.h"
 #include "pickup.h"
 #include "player_activity.h"
@@ -305,6 +307,7 @@ static const json_character_flag json_flag_WEB_RAPPEL( "WEB_RAPPEL" );
 
 static const material_id material_glass( "glass" );
 
+static const mod_id MOD_INFORMATION_Graphical_Overmap( "Graphical_Overmap" );
 static const mod_id MOD_INFORMATION_dda( "dda" );
 
 static const mongroup_id GROUP_BLACK_ROAD( "GROUP_BLACK_ROAD" );
@@ -880,6 +883,8 @@ bool game::start_game()
 
     // Make sure the items are added after the calendar is started
     u.add_profession_items();
+    // Move items from the raw inventory to item_location s. See header TODO.
+    u.migrate_items_to_storage( true );
 
     const start_location &start_loc = u.random_start_location ? scen->random_start_location().obj() :
                                       u.start_location.obj();
@@ -2514,6 +2519,7 @@ input_context get_default_mode_input_context()
     ctxt.register_action( "apply_wielded" );
     ctxt.register_action( "wear" );
     ctxt.register_action( "take_off" );
+    ctxt.register_action( "acquire_graph" );
     ctxt.register_action( "eat" );
     ctxt.register_action( "open_consume" );
     ctxt.register_action( "read" );
@@ -2573,6 +2579,7 @@ input_context get_default_mode_input_context()
     ctxt.register_action( "open_autonotes" );
     ctxt.register_action( "open_safemode" );
     ctxt.register_action( "open_distraction_manager" );
+    ctxt.register_action( "open_path_manager" );
     ctxt.register_action( "open_color" );
     ctxt.register_action( "open_world_mods" );
     ctxt.register_action( "debug" );
@@ -3113,9 +3120,21 @@ bool game::load( const save_t &name )
                 }
             },
             {
+                _( "Acquire graph" ), [&]()
+                {
+                    u.get_acquire_graph()->load();
+                }
+            },
+            {
                 _( "Diary" ), [&]()
                 {
                     u.get_avatar_diary()->load();
+                }
+            },
+            {
+                _( "Path Manager" ), [&]()
+                {
+                    u.get_path_manager()->load();
                 }
             },
             {
@@ -3272,7 +3291,7 @@ void game::load_world_modfiles( loading_ui &ui )
     DynamicDataLoader::get_instance().finalize_loaded_data( ui );
 }
 
-bool game::load_packs( const std::string &msg, const std::vector<mod_id> &packs, loading_ui &ui )
+void game::load_packs( const std::string &msg, const std::vector<mod_id> &packs, loading_ui &ui )
 {
     ui.new_context( msg );
     std::vector<mod_id> missing;
@@ -3299,11 +3318,28 @@ bool game::load_packs( const std::string &msg, const std::vector<mod_id> &packs,
         ui.proceed();
     }
 
-    for( const auto &e : missing ) {
-        debugmsg( "unknown content %s", e.c_str() );
+    std::unordered_set<mod_id> removed_mods {
+        MOD_INFORMATION_Graphical_Overmap // Removed in 0.I
+    };
+    std::unordered_set<mod_id> mods_to_remove;
+    for( const mod_id &e : missing ) {
+        if( removed_mods.find( e ) == removed_mods.end() ) {
+            if( query_yn( _( "Mod %s not found in mods folder, remove it from this world's modlist?" ),
+                          e.c_str() ) ) {
+                mods_to_remove.insert( e );
+            }
+        } else if( query_yn( _( "Mod %s has been removed, remove it from this world's modlist?" ),
+                             e.c_str() ) ) {
+            mods_to_remove.insert( e );
+        }
     }
-
-    return missing.empty();
+    if( !mods_to_remove.empty() ) {
+        auto &mods = world_generator->active_world->active_mod_order;
+        mods.erase( std::remove_if( mods.begin(), mods.end(), [&mods_to_remove]( const auto e ) {
+            return mods_to_remove.find( e ) != mods_to_remove.end();
+        } ), mods.end() );
+        world_generator->get_mod_manager().save_mods_list( world_generator->active_world );
+    }
 }
 
 void game::reset_npc_dispositions()
@@ -3367,8 +3403,11 @@ bool game::save_player_data()
         save_shortcuts( fout );
     }, _( "quick shortcuts" ) );
 #endif
+    const bool saved_acquire_graph = u.get_acquire_graph()->store();
     const bool saved_diary = u.get_avatar_diary()->store();
-    return saved_data && saved_map_memory && saved_log && saved_diary
+    const bool saved_path_manager = u.get_path_manager()->store();
+    return saved_data && saved_map_memory && saved_log && saved_acquire_graph && saved_diary
+           && saved_path_manager
 #if defined(__ANDROID__)
            && saved_shortcuts
 #endif
@@ -8713,6 +8752,7 @@ game::vmenu_ret game::list_items( const std::vector<map_item_stack> &item_list )
             recalc_unread = highlight_unread_items;
         } else if( action == "FILTER" ) {
             ui.invalidate_ui();
+            // TODO get this:
             string_input_popup()
             .title( _( "Filter:" ) )
             .width( 55 )
@@ -13873,14 +13913,16 @@ void game::climb_down_using( const tripoint &examp, climbing_aid_id aid_id, bool
 
 namespace cata_event_dispatch
 {
-void avatar_moves( const tripoint &old_abs_pos, const avatar &u, const map &m )
+void avatar_moves( const tripoint &old_abs_pos, avatar &u, const map &m )
 {
     const tripoint new_pos = u.pos();
     const tripoint new_abs_pos = m.getabs( new_pos );
+    const tripoint_abs_ms loc = m.getglobal( new_pos );
     mtype_id mount_type;
     if( u.is_mounted() ) {
         mount_type = u.mounted_creature->type->id;
     }
+    u.get_path_manager()->record_step( loc );
     get_event_bus().send<event_type::avatar_moves>( mount_type, m.ter( new_pos ).id(),
             u.current_movement_mode(), u.is_underwater(), new_pos.z );
 
