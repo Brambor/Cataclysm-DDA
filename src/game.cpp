@@ -3173,15 +3173,15 @@ bool game::load( const save_t &name )
                 }
             },
             {
-                _( "Diary" ), [&]()
-                {
-                    u.get_avatar_diary()->load();
-                }
-            },
-            {
                 _( "Acquire graph" ), [&]()
                 {
                     u.get_acquire_graph()->load();
+                }
+            },
+            {
+                _( "Diary" ), [&]()
+                {
+                    u.get_avatar_diary()->load();
                 }
             },
             {
@@ -3453,9 +3453,9 @@ bool game::save_player_data()
         save_shortcuts( fout );
     }, _( "quick shortcuts" ) );
 #endif
-    const bool saved_diary = u.get_avatar_diary()->store();
     const bool saved_acquire_graph = u.get_acquire_graph()->store();
-    return saved_data && saved_map_memory && saved_log && saved_diary && saved_acquire_graph
+    const bool saved_diary = u.get_avatar_diary()->store();
+    return saved_data && saved_map_memory && saved_log && saved_acquire_graph && saved_diary
 #if defined(__ANDROID__)
            && saved_shortcuts
 #endif

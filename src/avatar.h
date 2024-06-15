@@ -195,9 +195,9 @@ class avatar : public Character
 
         void remove_active_mission( mission &cur_mission );
 
+        acquire_graph *get_acquire_graph();
         //return avatar diary
         diary *get_avatar_diary();
-        acquire_graph *get_acquire_graph();
 
         // Dialogue and bartering--see npctalk.cpp
         void talk_to( std::unique_ptr<talker> talk_with, bool radio_contact = false,
