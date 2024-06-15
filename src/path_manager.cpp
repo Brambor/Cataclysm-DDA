@@ -1,6 +1,6 @@
 #include "path_manager.h"
 
-#include <stddef.h>
+#include <cstddef>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -149,7 +149,7 @@ void path::set_avatar_path()
 void path_manager_impl::start_recording()
 {
     current_path_index = paths.size();  // future_size - 1
-    paths.emplace_back( path() );
+    paths.emplace_back( std::move( path() ) );
     set_recording_path( current_path_index );
     paths.back().record_step( get_avatar().get_location() );
 }
