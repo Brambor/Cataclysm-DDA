@@ -546,7 +546,7 @@ void acquire_graph_ui::set_selected_id( int i )
 }
 
 // TODO: it is confusing that row_node is const, but underlying AbstractN is changed
-void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_impl *pimpl )
+static void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_impl *pimpl )
 {
     if( row_node.get()->optimized_away() ) {
         show_table_rec( row_node.get()->iterate_children().front(), pimpl );
@@ -572,7 +572,7 @@ void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_i
     }
 }
 
-void show_table( acquire_graph_impl *pimpl )
+static void show_table( acquire_graph_impl *pimpl )
 {
     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
 
