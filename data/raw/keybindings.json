@@ -2498,6 +2498,12 @@
   },
   {
     "type": "keybinding",
+    "name": "Acquire graph",
+    "category": "DEFAULTMODE",
+    "id": "acquire_graph"
+  },
+  {
+    "type": "keybinding",
     "name": "Consume item (all items)",
     "category": "DEFAULTMODE",
     "id": "eat",
@@ -3172,6 +3178,12 @@
     "name": "Open diary / achievements / scores",
     "category": "DEFAULTMODE",
     "bindings": [ { "input_method": "keyboard_char", "key": ")" }, { "input_method": "keyboard_code", "key": "0", "mod": [ "shift" ] } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "open_path_manager",
+    "name": "Path manager",
+    "category": "DEFAULTMODE"
   },
   {
     "type": "keybinding",
