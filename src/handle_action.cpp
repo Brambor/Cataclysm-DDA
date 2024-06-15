@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "acquire_graph.h"
 #include "action.h"
 #include "activity_actor_definitions.h"
 #include "activity_type.h"
@@ -75,6 +76,7 @@
 #include "output.h"
 #include "overmap_ui.h"
 #include "panels.h"
+#include "path_manager.h"
 #include "player_activity.h"
 #include "popup.h"
 #include "ranged.h"
@@ -181,6 +183,8 @@ extern bool add_best_key_for_action_to_quick_shortcuts( action_id action,
         const std::string &category, bool back );
 extern bool add_key_to_quick_shortcuts( int key, const std::string &category, bool back );
 #endif
+
+static bool has_vehicle_control( avatar &player_character );
 
 class user_turn
 {
@@ -1245,6 +1249,10 @@ static void wait()
 static void sleep()
 {
     avatar &player_character = get_avatar();
+    if( has_vehicle_control( player_character ) ) {
+        add_msg( m_info, _( "You can't sleep while controlling a vehicle." ) );
+        return;
+    }
     if( player_character.is_mounted() ) {
         add_msg( m_info, _( "You cannot sleep while mounted." ) );
         return;
@@ -2457,6 +2465,10 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             takeoff();
             break;
 
+        case ACTION_ACQUIRE_GRAPH:
+            u.get_acquire_graph()->show();
+            break;
+
         case ACTION_EAT:
             if( !avatar_action::eat_here( player_character ) ) {
                 avatar_action::eat_or_use( player_character, game_menus::inv::consume( player_character ) );
@@ -2624,11 +2636,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             break;
 
         case ACTION_SLEEP:
-            if( has_vehicle_control( player_character ) ) {
-                add_msg( m_info, _( "You can't sleep while controlling a vehicle" ) );
-            } else {
-                sleep();
-            }
+            sleep();
             break;
 
         case ACTION_CONTROL_VEHICLE:
@@ -2806,6 +2814,10 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
 
         case ACTION_DISTRACTION_MANAGER:
             get_distraction_manager().show();
+            break;
+
+        case ACTION_PATH_MANAGER:
+            u.get_path_manager()->show();
             break;
 
         case ACTION_COLOR:
