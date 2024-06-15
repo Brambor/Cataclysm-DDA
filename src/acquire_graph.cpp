@@ -41,9 +41,9 @@
 #include "uistate.h"
 #include "ui_manager.h"
 
-#pragma optimize("", off)
+// #pragma optimize( "", off )
 
-bool OPTIMIZE_AWAY_OR = true;
+static bool OPTIMIZE_AWAY_OR = true;
 
 static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
 static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH |
@@ -78,7 +78,7 @@ class acquire_graph_impl
         friend struct AbstractN;
     public:
         void recalculate();
-        void add_head( std::shared_ptr<AbstractN> );
+        void add_head( std::shared_ptr<AbstractN> &&head );
         void add_item( const item &it );
 
         std::vector<std::shared_ptr<AbstractN>> get_heads() {
@@ -111,11 +111,11 @@ struct AbstractN {
         virtual ~AbstractN() = default;
         // { return "ERROR: AbstractN NAME"; }; // TODO `=0` (delete) messes up emplace_back
         virtual std::string name() = 0;
-        std::string get_expanded() {
+        std::string get_expanded() const {
             return expanded ? "true" : "false";
         };
         // TODO return ref
-        virtual const std::vector<std::shared_ptr<AbstractN>> iterate_children() = 0;
+        virtual std::vector<std::shared_ptr<AbstractN>> iterate_children() const = 0;
         /**
          * It has to have exactly one child in iterate_children.
          * Also some further condition may need to be satsfied.
@@ -161,12 +161,12 @@ struct ObtainN : AbstractN {
  * Obtain by crafting
  */
 struct CraftN : ObtainN {
-        CraftN( const itype_id r_id_in ) : r_id( r_id_in ) {}
+        explicit CraftN( const itype_id r_id_in ) : r_id( r_id_in ) {}
         std::string name() override {
             return "Obtain by crafting";
         }
         void expand( acquire_graph_impl *pimpl ) override;
-        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+        std::vector<std::shared_ptr<AbstractN>> iterate_children() const override {
             return viable_recipes;
         }
     private:
@@ -189,7 +189,7 @@ struct ItemN : AbstractN {
             // TODO on tool, display_name(1), on item with charges, do something else too
             return itm.display_name( count ) + " " + std::to_string( count ) + " x";
         }
-        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+        std::vector<std::shared_ptr<AbstractN>> iterate_children() const override {
             return obtain_from;
         }
         void expand( acquire_graph_impl *pimpl ) override {
@@ -245,7 +245,7 @@ struct ToolN : ItemN {};
 */
 
 struct OrN : AbstractN {
-        OrN( const std::vector<std::shared_ptr<AbstractN>> &items_in ) : items( items_in ) {
+        explicit OrN( const std::vector<std::shared_ptr<AbstractN>> &items_in ) : items( items_in ) {
             expanded = true;
         }
         std::string name() override {
@@ -257,7 +257,7 @@ struct OrN : AbstractN {
         bool optimized_away() override {
             return OPTIMIZE_AWAY_OR && items.size() == 1;
         };
-        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+        std::vector<std::shared_ptr<AbstractN>> iterate_children() const override {
             //if( optimized_away() ) {
             //    return items.front()->iterate_children();
             //}
@@ -278,7 +278,7 @@ struct AndN : AbstractN {
         std::string name() override {
             return "And Node " + label;
         }
-        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+        std::vector<std::shared_ptr<AbstractN>> iterate_children() const override {
             return items;
         }
         /**
@@ -314,11 +314,11 @@ struct RecipeN : AbstractN {
                                component_to_node( reqs.get_components() ) );
             expanded = true;
         }
-        const std::vector<std::shared_ptr<AbstractN>> iterate_children() override {
+        std::vector<std::shared_ptr<AbstractN>> iterate_children() const override {
             std::vector<std::shared_ptr<AbstractN>> ret;
             // TODO this could probably crash
             // Water, 3rd byproduct has empty tools
-            if( !tool_groups.get()->iterate_children().empty() ) {
+            if( !tool_groups->iterate_children().empty() ) {
                 ret.emplace_back( tool_groups );
             }
             // TODO can it ever be empty?
@@ -388,7 +388,7 @@ struct RecipeN : AbstractN {
 class acquire_graph_ui : public cataimgui::window
 {
     public:
-        acquire_graph_ui( acquire_graph_impl *pimpl_in );
+        explicit acquire_graph_ui( acquire_graph_impl *pimpl_in );
         void run();
 
     protected:
@@ -453,21 +453,21 @@ void acquire_graph_impl::recalculate()
     // TODO: only recipes that player has seen.
     // TODO: remember recipes in a new var `recipes_read`.
     //       Otherwise, player would construct a graph that would miss nodes later
-    for( auto it = recipe_dict.begin(); it != recipe_dict.end(); ++it ) {
+    for( const auto& [r_id, rec] : recipe_dict ) {
         // TODO: ?ref
-        const itype_id r_id = it->second.result();
-        if( !crafting_result_count.count( r_id ) ) {
-            crafting_result_count[r_id] = 0;
+        const itype_id iid = rec.result();
+        if( !crafting_result_count.count( iid ) ) {
+            crafting_result_count[iid] = 0;
         }
-        crafting_result_count[r_id] += 1;
+        crafting_result_count[iid] += 1;
 
 
-        if( !from_crafting.count( r_id ) ) {
-            from_crafting[r_id] = {};
+        if( !from_crafting.count( iid ) ) {
+            from_crafting[iid] = {};
         }
-        from_crafting[r_id].emplace_back( it->first, crafting_source::product );
+        from_crafting[iid].emplace_back( r_id, crafting_source::product );
 
-        for( /*std::map<itype_id, int>*/ auto const& [key, _] : it->second.get_byproducts() ) {
+        for( /*std::map<itype_id, int>*/ auto const& [key, _] : rec.get_byproducts() ) {
             if( !crafting_byproduct_count.count( key ) ) {
                 crafting_byproduct_count[key] = 0;
             }
@@ -476,14 +476,14 @@ void acquire_graph_impl::recalculate()
             if( !from_crafting.count( key ) ) {
                 from_crafting[key] = {};
             }
-            from_crafting[key].emplace_back( it->first, crafting_source::byproduct );
+            from_crafting[key].emplace_back( r_id, crafting_source::byproduct );
         }
     }
 }
 
-void acquire_graph_impl::add_head( std::shared_ptr<AbstractN> head )
+void acquire_graph_impl::add_head( std::shared_ptr<AbstractN> &&head )
 {
-    graph_heads.emplace_back( head );
+    graph_heads.emplace_back( std::move( head ) );
 }
 
 void acquire_graph_impl::add_item( const item &itm )
@@ -491,7 +491,7 @@ void acquire_graph_impl::add_item( const item &itm )
     add_head( std::make_shared<ItemN>( itm, 1 ) );
 }
 
-inline int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
+static int find_default( const std::map<const itype_id, int> &m, const itype_id &key,
                          int default_value = 0 )
 {
     const auto &it = m.find( key );
@@ -517,7 +517,7 @@ cataimgui::bounds acquire_graph_ui::get_bounds()
 void acquire_graph_ui::set_selected_id( int i )
 {
     // TODO selected it is wrong, when NEW read_item is added
-    if( i >= pimpl->data_items.size() ) {
+    if( i >= static_cast<int>( pimpl->data_items.size() ) ) {
         i = -1;
     }
     pimpl->selected_id = i;
@@ -546,10 +546,10 @@ void acquire_graph_ui::set_selected_id( int i )
 }
 
 // TODO: it is confusing that row_node is const, but underlying AbstractN is changed
-void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_impl *pimpl )
+static void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_impl *pimpl )
 {
-    if( row_node.get()->optimized_away() ) {
-        show_table_rec( row_node.get()->iterate_children().front(), pimpl );
+    if( row_node->optimized_away() ) {
+        show_table_rec( row_node->iterate_children().front(), pimpl );
         return;
     }
     ImGui::TableNextColumn();
@@ -558,21 +558,21 @@ void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_graph_i
     // after ## add pointer to the Node this is based on as a unique ID
     const std::string &unique_id = std::to_string( reinterpret_cast< unsigned long long >
                                    ( reinterpret_cast<void **>( row_node.get() ) ) );
-    bool open = ImGui::TreeNodeEx( ( row_node.get()->name() + "##" + unique_id ).c_str(),
+    bool open = ImGui::TreeNodeEx( ( row_node->name() + "##" + unique_id ).c_str(),
                                    tree_node_flags );
 
     ImGui::TableNextColumn();
-    ImGui::Text( "%s", row_node.get()->get_expanded().c_str() );
+    ImGui::Text( "%s", row_node->get_expanded().c_str() );
     if( open ) {
-        row_node.get()->expand( pimpl );
-        for( const std::shared_ptr<AbstractN> &child : row_node.get()->iterate_children() ) {
+        row_node->expand( pimpl );
+        for( const std::shared_ptr<AbstractN> &child : row_node->iterate_children() ) {
             show_table_rec( child, pimpl );
         }
         ImGui::TreePop();
     }
 }
 
-void show_table( acquire_graph_impl *pimpl )
+static void show_table( acquire_graph_impl *pimpl )
 {
     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
 
@@ -592,7 +592,7 @@ void show_table( acquire_graph_impl *pimpl )
 
 void acquire_graph_ui::draw_controls()
 {
-    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
+    // const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
 
     ImGui::Text( "selected_id: %d", pimpl->selected_id );
     if( pimpl->selected_id != -1 && ImGui::Button( "Add Item Node" ) ) {
@@ -641,7 +641,7 @@ void acquire_graph_ui::draw_controls()
             }
 
             ImGui::TableNextColumn();
-            draw_colored_text( i_name.c_str(), c_white );
+            draw_colored_text( i_name, c_white );
 
             const itype_id &iid = std::get<1>( pimpl->data_items[i] )->get_id();
 
@@ -774,4 +774,4 @@ void acquire_graph::deserialize( const JsonValue &jsin )
     }
 }
 
-#pragma optimize("", on)
+// #pragma optimize( "", on )
