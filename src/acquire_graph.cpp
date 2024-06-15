@@ -41,7 +41,7 @@
 #include "uistate.h"
 #include "ui_manager.h"
 
-#pragma optimize("", off)
+// #pragma optimize( "", off )
 
 bool OPTIMIZE_AWAY_OR = true;
 
@@ -517,7 +517,7 @@ cataimgui::bounds acquire_graph_ui::get_bounds()
 void acquire_graph_ui::set_selected_id( int i )
 {
     // TODO selected it is wrong, when NEW read_item is added
-    if( i >= pimpl->data_items.size() ) {
+    if( i >= static_cast<int>( pimpl->data_items.size() ) ) {
         i = -1;
     }
     pimpl->selected_id = i;
@@ -592,7 +592,7 @@ void show_table( acquire_graph_impl *pimpl )
 
 void acquire_graph_ui::draw_controls()
 {
-    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
+    // const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
 
     ImGui::Text( "selected_id: %d", pimpl->selected_id );
     if( pimpl->selected_id != -1 && ImGui::Button( "Add Item Node" ) ) {
@@ -774,4 +774,4 @@ void acquire_graph::deserialize( const JsonValue &jsin )
     }
 }
 
-#pragma optimize("", on)
+// #pragma optimize( "", on )
