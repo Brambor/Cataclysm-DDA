@@ -577,17 +577,18 @@ static void show_table( acquire_graph_impl *pimpl )
     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize( "A" ).x;
 
     ImGui::Checkbox( "OPTIMIZE_AWAY_OR", &OPTIMIZE_AWAY_OR );
-    if( ImGui::BeginTable( "mything", 2, flags ) ) {
-        ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide );
-        ImGui::TableSetupColumn( "Expanded", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f );
-        ImGui::TableHeadersRow();
-
-        for( const std::shared_ptr<AbstractN> &head : pimpl->get_heads() ) {
-            show_table_rec( head, pimpl );
-        }
-
-        ImGui::EndTable();
+    if( !ImGui::BeginTable( "mything", 2, flags ) ) {
+        return;
     }
+    ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide );
+    ImGui::TableSetupColumn( "Expanded", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f );
+    ImGui::TableHeadersRow();
+
+    for( const std::shared_ptr<AbstractN> &head : pimpl->get_heads() ) {
+        show_table_rec( head, pimpl );
+    }
+
+    ImGui::EndTable();
 }
 
 void acquire_graph_ui::draw_controls()
