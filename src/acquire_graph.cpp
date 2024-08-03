@@ -45,7 +45,6 @@
 
 static bool OPTIMIZE_AWAY_OR = true;
 
-static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
 static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH |
                                ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 
@@ -558,8 +557,7 @@ static void show_table_rec( const std::shared_ptr<AbstractN> &row_node, acquire_
     // after ## add pointer to the Node this is based on as a unique ID
     const std::string &unique_id = std::to_string( reinterpret_cast< unsigned long long >
                                    ( reinterpret_cast<void **>( row_node.get() ) ) );
-    bool open = ImGui::TreeNodeEx( ( row_node->name() + "##" + unique_id ).c_str(),
-                                   tree_node_flags );
+    bool open = ImGui::TreeNodeEx( ( row_node->name() + "##" + unique_id ).c_str() );
 
     ImGui::TableNextColumn();
     ImGui::Text( "%s", row_node->get_expanded().c_str() );
