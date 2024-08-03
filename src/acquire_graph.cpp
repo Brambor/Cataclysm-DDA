@@ -629,7 +629,7 @@ void acquire_graph_ui::draw_controls()
             }
             ImGui::SameLine();
 
-            draw_colored_text( ity.symbol(), ity.color() );
+            cataimgui::draw_colored_text( ity.symbol(), ity.color() );
 
             std::string i_name = std::get<0>( pimpl->data_items[i] );
             if( std::get<2>( pimpl->data_items[i] ) != nullptr ) {
@@ -640,7 +640,7 @@ void acquire_graph_ui::draw_controls()
             }
 
             ImGui::TableNextColumn();
-            draw_colored_text( i_name, c_white );
+            cataimgui::draw_colored_text( i_name, c_white );
 
             const itype_id &iid = std::get<1>( pimpl->data_items[i] )->get_id();
 
@@ -658,7 +658,7 @@ void acquire_graph_ui::draw_controls()
     // For not jagging up when table leaves the screen (msg too long)
     ImGui::BeginChild( "Descriptions" );
     show_table( pimpl );
-    //draw_colored_text( msg.c_str(), c_white );
+    //cataimgui::draw_colored_text( msg.c_str(), c_white );
     ImGui::TextWrapped( "%s", msg.c_str() );
 
     // SHOW SELECTED ITEM's disassembly
