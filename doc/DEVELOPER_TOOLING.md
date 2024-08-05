@@ -307,8 +307,7 @@ You can also add `-fix-errors` to apply fixes reported by the checks or
 required headers and add and remove includes as appropriate.
 
 Running IWYU on this codebase revealed some issues.  You will need a version of IWYU
-where the following PR has been merged (which has not yet happened at time of
-writing, but with luck might make it into the clang-10 release of IWYU):
+where the following PR has been merged:
 
 * https://github.com/include-what-you-use/include-what-you-use/pull/775
 
