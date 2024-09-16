@@ -53,7 +53,8 @@ input_context get_default_mode_input_context();
 enum quit_status {
     QUIT_NO = 0,    // Still playing
     QUIT_SUICIDE,   // Quit with 'Q'
-    QUIT_SAVED,     // Saved and quit
+    QUIT_SAVED,     // Saved and quit to main menu
+    QUIT_SAVED_DESKTOP, // Saved and quit to desktop
     QUIT_NOSAVED,   // Quit without saving
     QUIT_DIED,      // Actual death
     QUIT_WATCH,     // Died, and watching aftermath
