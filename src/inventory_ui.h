@@ -214,6 +214,9 @@ class inventory_entry
 };
 
 struct inventory_selector_save_state;
+/**
+ * This is preset for inventory_selector and is used by it.
+ */
 class inventory_selector_preset
 {
     public:
@@ -597,6 +600,14 @@ class selection_column : public inventory_column
         inventory_entry last_changed;
 };
 
+/**
+ * Select an item from a modular list of options. Inherit from this to customize and expand.
+ *
+ * Make and hold the item list to select from. Filter it.
+ * Draw the menu including header and hint. Agregate items by category.
+ * Handle input and invlets.
+ * Select or examine an item.
+ */
 class inventory_selector
 {
     public:
@@ -718,6 +729,7 @@ class inventory_selector
          */
         std::pair< bool, std::string > query_string( const std::string &val, bool end_with_toggle = false );
         /** Query the user for a filter and apply it. */
+        // TODO add filter hint??
         void query_set_filter();
         /** Query the user for a count and return it. */
         int query_count( char init = 0, bool end_with_toggle = false );
@@ -834,6 +846,7 @@ class inventory_selector
             return get_column( active_column_index );
         }
 
+        // TODO this probably forgets the filter if switched twice
         void toggle_categorize_contained();
         void set_active_column( size_t index );
         void toggle_skip_unselectable();
@@ -923,6 +936,9 @@ struct enum_traits<inventory_selector::uimode> {
 inventory_selector::stat display_stat( const std::string &caption, int cur_value, int max_value,
                                        const std::function<std::string( int )> &disp_func );
 
+/**
+ * Can drag, but why else does it exist?
+ */
 class inventory_pick_selector : public inventory_selector
 {
     public:
@@ -963,6 +979,9 @@ class ammo_inventory_selector : public inventory_selector
         const item_location reload_loc;
 };
 
+/**
+ * Unlike `inventory_selector` select multiple items and also specify item ammount per item.
+ */
 class inventory_multiselector : public inventory_selector
 {
     public:
@@ -1014,6 +1033,7 @@ class inventory_compare_selector : public inventory_multiselector
         std::pair<const item *, const item *> execute();
 
     protected:
+        /// The (up to 2) items to be compared.
         std::vector<const item *> compared;
         void toggle_entry( inventory_entry *entry );
 };

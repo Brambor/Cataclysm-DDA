@@ -3817,6 +3817,7 @@ void inventory_compare_selector::toggle_entry( inventory_entry *entry )
     const item *it = &*entry->any_item();
     const auto iter = std::find( compared.begin(), compared.end(), it );
 
+    // if not found in compare select it, otherwise deselect it
     entry->chosen_count = iter == compared.end() ? 1 : 0;
 
     if( entry->chosen_count != 0 ) {
@@ -4466,6 +4467,7 @@ unload_selector::unload_selector( Character &p,
     set_hint( hint_string() );
 }
 
+// TODO add this for disassembly menu fot `T`ravel to
 std::string unload_selector::hint_string()
 {
     std::string mode = uistate.unload_auto_contain ? _( "Auto" ) : _( "Manual" );
