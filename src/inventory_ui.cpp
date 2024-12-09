@@ -3869,19 +3869,20 @@ void inventory_multiselector::deselect_contained_items()
         inventory_items.push_back( loc_front );
     }
     for( item_location loc_container : inventory_items ) {
-        if( !loc_container->empty() ) {
-            for( inventory_column *col : get_all_columns() ) {
-                for( inventory_entry *selected : col->get_entries( []( const inventory_entry & entry ) {
-                return entry.chosen_count > 0;
-            } ) ) {
-                    if( !selected->is_item() ) {
-                        continue;
-                    }
-                    for( const item *item_contained : loc_container->all_items_ptr() ) {
-                        for( const item_location &selected_loc : selected->locations ) {
-                            if( selected_loc.get_item() == item_contained ) {
-                                set_chosen_count( *selected, 0 );
-                            }
+        if( loc_container->empty() ) {
+            continue;
+        }
+        for( inventory_column *col : get_all_columns() ) {
+            for( inventory_entry *selected : col->get_entries( []( const inventory_entry & entry ) {
+            return entry.chosen_count > 0;
+        } ) ) {
+                if( !selected->is_item() ) {
+                    continue;
+                }
+                for( const item *item_contained : loc_container->all_items_ptr() ) {
+                    for( const item_location &selected_loc : selected->locations ) {
+                        if( selected_loc.get_item() == item_contained ) {
+                            set_chosen_count( *selected, 0 );
                         }
                     }
                 }
@@ -4304,9 +4305,8 @@ void pickup_selector::remove_from_to_use( item_location &it )
         if( iter->first == it ) {
             to_use.erase( iter );
             return;
-        } else {
-            iter++;
         }
+        iter++;
     }
 }
 
