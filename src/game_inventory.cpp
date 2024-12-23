@@ -683,16 +683,7 @@ class disassemble_inventory_preset : public inventory_selector_preset
         }
 
         bool get_enabled( const item_location &loc ) const override {
-            const auto ret = you.can_disassemble( *loc, inv );
-            if( !ret.success() ) {
-                return false;
-            }
-
-            item_location ancestor = loc;
-            while( ancestor.has_parent() ) {
-                ancestor = ancestor.parent_item();
-            }
-            return rl_dist( you.pos(), ancestor.position() ) <= 1;
+            return you.can_disassemble( *loc, inv ).success();
         }
 
         void on_filter_change( const std::string &filter ) const override {
@@ -714,15 +705,6 @@ class disassemble_inventory_preset : public inventory_selector_preset
             const auto ret = you.can_disassemble( *loc, inv );
             if( !ret.success() ) {
                 return ret.str();
-            }
-
-            item_location ancestor = loc;
-            while( ancestor.has_parent() ) {
-                ancestor = ancestor.parent_item();
-            }
-            if( rl_dist( you.pos(), ancestor.position() ) > 1 ) {
-                return string_format( "%s is too far.",
-                                      colorize( direction_suffix( you.pos(), ancestor.position() ), c_red ) );
             }
 
             return std::string();
@@ -759,10 +741,8 @@ class disassemble_inventory_preset : public inventory_selector_preset
 
 item_location game_menus::inv::disassemble( Character &you )
 {
-    // TODO register context for `T`ravel to
-    // TODO items 3W are visïble in disassembly menu, Is that ok since they are within crafting? probably not
     return inv_internal( you, disassemble_inventory_preset( you, you.crafting_inventory() ),
-                         _( "Disassemble item" ), 60,
+                         _( "Disassemble item" ), PICKUP_RANGE,
                          _( "You don't have any items you could disassemble." ) );
 }
 
