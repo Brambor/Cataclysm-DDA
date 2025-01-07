@@ -62,6 +62,7 @@
 #include "overmap.h"
 #include "overmapbuffer.h"
 #include "pathfinding.h"
+#include "path_manager.h"
 #include "pimpl.h"
 #include "profession.h"
 #include "ranged.h"
@@ -421,6 +422,14 @@ diary *avatar::get_avatar_diary()
         a_diary = std::make_unique<diary>();
     }
     return a_diary.get();
+}
+
+path_manager *avatar::get_path_manager()
+{
+    if( a_path_manager == nullptr ) {
+        a_path_manager = std::make_unique<path_manager>();
+    }
+    return a_path_manager.get();
 }
 
 bool avatar::read( item_location &book, item_location ereader )
@@ -1245,8 +1254,8 @@ void avatar::rebuild_aim_cache() const
 
     double pi = 2 * acos( 0.0 );
 
-    const tripoint_bub_ms local_last_target = get_map().bub_from_abs( tripoint_abs_ms(
-                last_target_pos.value() ) );
+    const tripoint_bub_ms local_last_target = get_map().bub_from_abs(
+                last_target_pos.value() );
 
     float base_angle = atan2f( local_last_target.y() - posy(),
                                local_last_target.x() - posx() );
@@ -1285,7 +1294,7 @@ void avatar::rebuild_aim_cache() const
             }
 
             // some basic angle inclusion math, but also everything with 15 is still seen
-            if( rl_dist( tripoint_bub_ms( smx, smy, pos_bub().z() ), pos_bub() ) < 15 ) {
+            if( rl_dist( tripoint_bub_ms( smx, smy, posz() ), pos_bub() ) < 15 ) {
                 aim_cache[smx][smy] = false;
             } else if( lower_bound > upper_bound ) {
                 aim_cache[smx][smy] = !( current_angle >= lower_bound ||
@@ -1313,7 +1322,7 @@ void avatar::set_movement_mode( const move_mode_id &new_mode )
         // crouching affects visibility
         //TODO: Replace with dirtying vision_transparency_cache
         get_map().set_transparency_cache_dirty( pos_bub() );
-        get_map().set_seen_cache_dirty( pos_bub().z() );
+        get_map().set_seen_cache_dirty( posz() );
         recoil = MAX_RECOIL;
     } else {
         add_msg( new_mode->change_message( false, get_steed_type() ) );

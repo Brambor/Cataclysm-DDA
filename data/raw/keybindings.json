@@ -1688,6 +1688,17 @@
   {
     "type": "keybinding",
     "id": "RANDOMIZE",
+    "category": "NEW_CHAR_TRAITS",
+    "name": "Randomize trait",
+    "bindings": [
+      { "input_method": "keyboard_char", "key": "*" },
+      { "input_method": "keyboard_code", "key": "KEYPAD_MULTIPLY" },
+      { "input_method": "keyboard_code", "key": "8", "mod": [ "shift" ] }
+    ]
+  },
+  {
+    "type": "keybinding",
+    "id": "RANDOMIZE",
     "category": "NEW_CHAR_SCENARIOS",
     "name": "Randomize scenario",
     "bindings": [
@@ -2612,10 +2623,22 @@
   },
   {
     "type": "keybinding",
+    "name": "Throw wielded item",
+    "category": "DEFAULTMODE",
+    "id": "throw_wielded"
+  },
+  {
+    "type": "keybinding",
     "name": "Blind throw item",
     "category": "LOOK",
     "id": "throw_blind",
     "bindings": [ { "input_method": "keyboard_any", "key": "t" } ]
+  },
+  {
+    "type": "keybinding",
+    "name": "Blind throw wielded item",
+    "category": "LOOK",
+    "id": "throw_blind_wielded"
   },
   {
     "type": "keybinding",
@@ -3266,10 +3289,22 @@
   },
   {
     "type": "keybinding",
+    "id": "recast_spell",
+    "name": "Repeat last supernatural ability",
+    "category": "DEFAULTMODE"
+  },
+  {
+    "type": "keybinding",
     "id": "diary",
     "name": "Open diary / achievements / scores",
     "category": "DEFAULTMODE",
     "bindings": [ { "input_method": "keyboard_char", "key": ")" }, { "input_method": "keyboard_code", "key": "0", "mod": [ "shift" ] } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "open_path_manager",
+    "name": "Path manager",
+    "category": "DEFAULTMODE"
   },
   {
     "type": "keybinding",
@@ -3506,6 +3541,72 @@
     "category": "HELP_KEYBINDINGS",
     "name": "Execute action keybinding",
     "bindings": [ { "input_method": "keyboard_any", "key": "." }, { "input_method": "keyboard_code", "key": "KEYPAD_PERIOD" } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "WALK_PATH",
+    "category": "PATH_MANAGER",
+    "name": "Walk path"
+  },
+  {
+    "type": "keybinding",
+    "id": "WALK_PATH_FROM_MIDDLE",
+    "category": "PATH_MANAGER",
+    "name": "Walk path from middle"
+  },
+  {
+    "type": "keybinding",
+    "id": "START_RECORDING",
+    "category": "PATH_MANAGER",
+    "name": "Start recording"
+  },
+  {
+    "type": "keybinding",
+    "id": "CONTINUE_RECORDING",
+    "category": "PATH_MANAGER",
+    "name": "Continue recording"
+  },
+  {
+    "type": "keybinding",
+    "id": "STOP_RECORDING",
+    "category": "PATH_MANAGER",
+    "name": "Stop recording"
+  },
+  {
+    "type": "keybinding",
+    "id": "DELETE_PATH",
+    "category": "PATH_MANAGER",
+    "name": "Delete"
+  },
+  {
+    "type": "keybinding",
+    "id": "MOVE_PATH_UP",
+    "category": "PATH_MANAGER",
+    "name": "Move up"
+  },
+  {
+    "type": "keybinding",
+    "id": "MOVE_PATH_DOWN",
+    "category": "PATH_MANAGER",
+    "name": "Move down"
+  },
+  {
+    "type": "keybinding",
+    "id": "RENAME_START",
+    "category": "PATH_MANAGER",
+    "name": "Rename start"
+  },
+  {
+    "type": "keybinding",
+    "id": "RENAME_END",
+    "category": "PATH_MANAGER",
+    "name": "Rename end"
+  },
+  {
+    "type": "keybinding",
+    "id": "SWAP_START_END",
+    "category": "PATH_MANAGER",
+    "name": "Swap start with end"
   },
   {
     "type": "keybinding",
@@ -4880,6 +4981,34 @@
     "category": "SCORES_UI",
     "name": "Toggle NPC group",
     "bindings": [ { "input_method": "keyboard_any", "key": "n" } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "TOGGLE_GENERAL_INFO_GROUP",
+    "category": "MA_DETAILS_UI",
+    "name": "Toggle general info group",
+    "bindings": [ { "input_method": "keyboard_any", "key": "g" } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "TOGGLE_BUFFS_GROUP",
+    "category": "MA_DETAILS_UI",
+    "name": "Toggle buffs group",
+    "bindings": [ { "input_method": "keyboard_any", "key": "b" } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "TOGGLE_TECHNIQUES_GROUP",
+    "category": "MA_DETAILS_UI",
+    "name": "Toggle techniques group",
+    "bindings": [ { "input_method": "keyboard_any", "key": "t" } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "TOGGLE_WEAPONS_GROUP",
+    "category": "MA_DETAILS_UI",
+    "name": "Toggle weapons group",
+    "bindings": [ { "input_method": "keyboard_any", "key": "w" } ]
   },
   {
     "type": "keybinding",

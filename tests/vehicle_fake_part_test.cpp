@@ -398,7 +398,7 @@ TEST_CASE( "open_and_close_fake_doors", "[vehicle][vehicle_fake]" )
     }
     REQUIRE( fakes_tested == 4 );
 
-    tripoint prev_player_pos = you.pos();
+    tripoint_bub_ms prev_player_pos = you.pos_bub();
     // Then open them all back up.
     for( const vpart_reference &vp : veh->get_avail_parts( "OPENABLE" ) ) {
         REQUIRE( !vp.part().is_fake );
@@ -412,7 +412,7 @@ TEST_CASE( "open_and_close_fake_doors", "[vehicle][vehicle_fake]" )
             continue;
         }
         CAPTURE( prev_player_pos );
-        CAPTURE( you.pos() );
+        CAPTURE( you.pos_bub() );
         REQUIRE( veh->can_close( vp.part_index(), you ) );
         REQUIRE( veh->can_close( fake_door.part_index(), you ) );
         you.setpos( vp.pos_bub() );

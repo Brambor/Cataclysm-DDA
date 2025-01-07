@@ -203,7 +203,7 @@ bool cleanup_at_end()
     }
 
     //Reset any offset due to driving
-    g->set_driving_view_offset( point::zero );
+    g->set_driving_view_offset( point_rel_ms::zero );
 
     //clear all sound channels
     sfx::fade_audio_channel( sfx::channel::any, 300 );
@@ -326,7 +326,7 @@ void monmove()
         if( !critter.is_dead() &&
             u.has_active_bionic( bio_alarm ) &&
             u.get_power_level() >= bio_alarm->power_trigger &&
-            rl_dist( u.pos(), critter.pos() ) <= 5 &&
+            rl_dist( u.pos_bub(), critter.pos_bub() ) <= 5 &&
             !critter.is_hallucination() ) {
             u.mod_power_level( -bio_alarm->power_trigger );
             add_msg( m_warning, _( "Your motion alarm goes off!" ) );
@@ -402,7 +402,7 @@ void overmap_npc_move()
             continue;
         }
         npc *npc_to_add = elem.get();
-        if( ( !npc_to_add->is_active() || rl_dist( u.pos(), npc_to_add->pos() ) > SEEX * 2 ) &&
+        if( ( !npc_to_add->is_active() || rl_dist( u.pos_bub(), npc_to_add->pos_bub() ) > SEEX * 2 ) &&
             npc_to_add->mission == NPC_MISSION_TRAVELLING ) {
             travelling_npcs.push_back( npc_to_add );
         }
@@ -488,9 +488,6 @@ bool do_turn()
         }
     }
 
-    // Make sure players cant defy gravity by standing still, Looney tunes style.
-    u.gravity_check();
-
     // If you're inside a wall or something and haven't been telefragged, let's get you out.
     if( ( m.impassable( u.pos_bub() ) && !m.impassable_field_at( u.pos_bub() ) ) &&
         !m.has_flag( ter_furn_flag::TFLAG_CLIMBABLE, u.pos_bub() ) ) {
@@ -540,7 +537,7 @@ bool do_turn()
 
     // Process NPC sound events before they move or they hear themselves talking
     for( npc &guy : g->all_npcs() ) {
-        if( rl_dist( guy.pos(), u.pos() ) < MAX_VIEW_DISTANCE ) {
+        if( rl_dist( guy.pos_bub(), u.pos_bub() ) < MAX_VIEW_DISTANCE ) {
             sounds::process_sound_markers( &guy );
         }
     }
@@ -557,11 +554,12 @@ bool do_turn()
     if( !u.has_effect( effect_sleep ) || g->uquit == QUIT_WATCH ) {
         if( u.get_moves() > 0 || g->uquit == QUIT_WATCH ) {
             while( u.get_moves() > 0 || g->uquit == QUIT_WATCH ) {
+                m.process_falling();
                 g->cleanup_dead();
                 g->mon_info_update();
                 // Process any new sounds the player caused during their turn.
                 for( npc &guy : g->all_npcs() ) {
-                    if( rl_dist( guy.pos(), u.pos() ) < MAX_VIEW_DISTANCE ) {
+                    if( rl_dist( guy.pos_bub(), u.pos_bub() ) < MAX_VIEW_DISTANCE ) {
                         sounds::process_sound_markers( &guy );
                     }
                 }
@@ -623,7 +621,7 @@ bool do_turn()
         }
     }
 
-    if( g->driving_view_offset.x != 0 || g->driving_view_offset.y != 0 ) {
+    if( g->driving_view_offset.x() != 0 || g->driving_view_offset.y() != 0 ) {
         // Still have a view offset, but might not be driving anymore,
         // or the option has been deactivated,
         // might also happen when someone dives from a moving car.
@@ -635,10 +633,10 @@ bool do_turn()
     scent_map &scent = get_scent();
     // No-scent debug mutation has to be processed here or else it takes time to start working
     if( !u.has_flag( STATIC( json_character_flag( "NO_SCENT" ) ) ) ) {
-        scent.set( u.pos(), u.scent, u.get_type_of_scent() );
+        scent.set( u.pos_bub(), u.scent, u.get_type_of_scent() );
         overmap_buffer.set_scent( u.global_omt_location(),  u.scent );
     }
-    scent.update( u.pos(), m );
+    scent.update( u.pos_bub(), m );
 
     // We need floor cache before checking falling 'n stuff
     m.build_floor_caches();

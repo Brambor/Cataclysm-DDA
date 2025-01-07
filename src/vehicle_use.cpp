@@ -211,24 +211,24 @@ void vehicle::control_doors()
 
         menu.add( _( "Open all curtains" ) )
         .hotkey_auto()
-        .location( get_player_character().pos() )
+        .location( get_player_character().pos_bub().raw() )
         .on_submit( [&open_or_close_all] { open_or_close_all( true, "CURTAIN" ); } );
 
         menu.add( _( "Open all curtains and doors" ) )
         .hotkey_auto()
-        .location( get_player_character().pos() )
+        .location( get_player_character().pos_bub().raw() )
         .on_submit( [&open_or_close_all, &lock_or_unlock_all] {
             lock_or_unlock_all( false, "LOCKABLE_DOOR" );
             open_or_close_all( true, "" );
         } );
         menu.add( _( "Close all doors" ) )
         .hotkey_auto()
-        .location( get_player_character().pos() )
+        .location( get_player_character().pos_bub().raw() )
         .on_submit( [&open_or_close_all] { open_or_close_all( false, "DOOR" ); } );
 
         menu.add( _( "Close all curtains and doors" ) )
         .hotkey_auto()
-        .location( get_player_character().pos() )
+        .location( get_player_character().pos_bub().raw() )
         .on_submit( [&open_or_close_all] { open_or_close_all( false, "" ); } );
 
         for( const vpart_reference &vp_motor : get_avail_parts( "DOOR_MOTOR" ) ) {
@@ -486,7 +486,7 @@ void vehicle::smash_security_system()
 void vehicle::autopilot_patrol_check()
 {
     zone_manager &mgr = zone_manager::get_manager();
-    if( mgr.has_near( zone_type_VEHICLE_PATROL, global_square_location(), 60 ) ) {
+    if( mgr.has_near( zone_type_VEHICLE_PATROL, global_square_location(), MAX_VIEW_DISTANCE ) ) {
         enable_patrol();
     } else {
         g->zones_manager();
@@ -580,7 +580,7 @@ double vehicle::engine_cold_factor( const vehicle_part &vp ) const
     }
 
     const tripoint_bub_ms pos = bub_part_pos( vp );
-    double eff_temp = units::to_fahrenheit( get_weather().get_temperature( pos.raw() ) );
+    double eff_temp = units::to_fahrenheit( get_weather().get_temperature( pos ) );
     if( !vp.has_fault_flag( "BAD_COLD_START" ) ) {
         eff_temp = std::min( eff_temp, 20.0 );
     }
@@ -1560,7 +1560,7 @@ void vehicle::use_monster_capture( int part, const tripoint_bub_ms &pos )
         return;
     }
     item base = item( parts[part].get_base() );
-    base.type->invoke( &get_avatar(), base, pos.raw() );
+    base.type->invoke( &get_avatar(), base, pos );
     if( base.has_var( "contained_name" ) ) {
         parts[part].set_flag( vp_flag::animal_flag );
     } else {
@@ -1584,7 +1584,8 @@ void vehicle::use_harness( int part, const tripoint_bub_ms &pos )
         return;
     }
     creature_tracker &creatures = get_creature_tracker();
-    const std::function<bool( const tripoint & )> f = [&creatures]( const tripoint & pnt ) {
+    const std::function<bool( const tripoint_bub_ms & )> f = [&creatures](
+    const tripoint_bub_ms & pnt ) {
         monster *mon_ptr = creatures.creature_at<monster>( pnt );
         if( mon_ptr == nullptr ) {
             return false;
@@ -1594,14 +1595,14 @@ void vehicle::use_harness( int part, const tripoint_bub_ms &pos )
                                     f.has_flag( mon_flag_PET_HARNESSABLE ) );
     };
 
-    const std::optional<tripoint> pnt_ = choose_adjacent_highlight(
-            _( "Where is the creature to harness?" ), _( "There is no creature to harness nearby." ), f,
-            false );
+    const std::optional<tripoint_bub_ms> pnt_ = choose_adjacent_highlight(
+                _( "Where is the creature to harness?" ), _( "There is no creature to harness nearby." ), f,
+                false );
     if( !pnt_ ) {
         add_msg( m_info, _( "Never mind." ) );
         return;
     }
-    const tripoint &target = *pnt_;
+    const tripoint_bub_ms &target = *pnt_;
     monster *mon_ptr = creatures.creature_at<monster>( target );
     if( mon_ptr == nullptr ) {
         add_msg( m_info, _( "No creature there." ) );
@@ -1867,7 +1868,7 @@ void vehicle::build_interact_menu( veh_menu &menu, const tripoint &p, bool with_
         .hotkey( "EXAMINE_VEHICLE" )
         .on_submit( [this, vp] {
             const vpart_position non_fake( *this, get_non_fake_part( vp.part_index() ) );
-            const point start_pos = non_fake.mount_pos().raw().rotate( 2 );
+            const point_rel_ms start_pos = non_fake.mount_pos().rotate( 2 );
             g->exam_vehicle( *this, start_pos );
         } );
 

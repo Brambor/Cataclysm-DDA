@@ -32,7 +32,7 @@ static void reset_player()
     Character &player_character = get_player_character();
     // Move player somewhere safe
     REQUIRE( !player_character.in_vehicle );
-    player_character.setpos( tripoint::zero );
+    player_character.setpos( tripoint_bub_ms::zero );
     // Blind the player to avoid needless drawing-related overhead
     player_character.add_effect( effect_blind, 1_turns, true );
 }
@@ -274,6 +274,7 @@ TEST_CASE( "Daily_solar_power", "[vehicle][power]" )
 
 TEST_CASE( "maximum_reverse_velocity", "[vehicle][power][reverse]" )
 {
+    clear_map();
     reset_player();
     build_test_map( ter_id( "t_pavement" ) );
     clear_vehicles();

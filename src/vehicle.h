@@ -519,6 +519,9 @@ struct vehicle_part {
         /** door is locked */
         bool locked = false;
 
+        // If the part's sprite/symbol shouldn't be shown
+        bool hidden = false;
+
         /** direction the part is facing */
         units::angle direction = 0_degrees;
 
@@ -940,7 +943,7 @@ class vehicle
 
         // initializes parts and fuel state for randomly generated vehicle and calls refresh()
         void init_state( map &placed_on, int init_veh_fuel, int init_veh_status,
-                         const bool force_status = false );
+                         bool force_status = false );
 
         // damages all parts of a vehicle by a random amount
         void smash( map &m, float hp_percent_loss_min = 0.1f, float hp_percent_loss_max = 1.2f,

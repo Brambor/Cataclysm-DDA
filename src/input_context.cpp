@@ -554,6 +554,7 @@ static void rotate_direction_cw( int &dx, int &dy )
     dy = dir_num / 3 - 1;
 }
 
+// TODO template these
 std::optional<tripoint> input_context::get_direction( const std::string &action ) const
 {
     static const auto noop = static_cast<tripoint( * )( tripoint )>( []( tripoint p ) {
@@ -616,6 +617,41 @@ const
         return transform( tripoint_rel_ms::south_west );
     } else if( action == "RIGHTDOWN" ) {
         return transform( tripoint_rel_ms::south_east );
+    } else {
+        return std::nullopt;
+    }
+}
+
+std::optional<tripoint_rel_omt> input_context::get_direction_rel_omt( const std::string &action )
+const
+{
+    static const auto noop = static_cast<tripoint_rel_omt( * )( tripoint_rel_omt )>( [](
+    tripoint_rel_omt p ) {
+        return p;
+    } );
+    static const auto rotate = static_cast<tripoint_rel_omt( * )( tripoint_rel_omt )>( [](
+    tripoint_rel_omt p ) {
+        rotate_direction_cw( p.x(), p.y() );
+        return p;
+    } );
+    const auto transform = iso_mode && g->is_tileset_isometric() ? rotate : noop;
+
+    if( action == "UP" ) {
+        return transform( tripoint_rel_omt::north );
+    } else if( action == "DOWN" ) {
+        return transform( tripoint_rel_omt::south );
+    } else if( action == "LEFT" ) {
+        return transform( tripoint_rel_omt::west );
+    } else if( action == "RIGHT" ) {
+        return transform( tripoint_rel_omt::east );
+    } else if( action == "LEFTUP" ) {
+        return transform( tripoint_rel_omt::north_west );
+    } else if( action == "RIGHTUP" ) {
+        return transform( tripoint_rel_omt::north_east );
+    } else if( action == "LEFTDOWN" ) {
+        return transform( tripoint_rel_omt::south_west );
+    } else if( action == "RIGHTDOWN" ) {
+        return transform( tripoint_rel_omt::south_east );
     } else {
         return std::nullopt;
     }
@@ -1186,6 +1222,17 @@ std::optional<tripoint_bub_ms> input_context::get_coordinates( const catacurses:
     return tripoint_bub_ms( p.x, p.y, get_map().get_abs_sub().z() );
 }
 #endif
+
+std::optional<tripoint_rel_omt> input_context::get_coordinates_rel_omt( const catacurses::window
+        &capture_win, const point &offset, const bool center_cursor ) const
+{
+    // Sometimes off by one with tiles but I think that's due to the centre changing with zoom level + tileset size so I don't think it can be easily fixed here
+    const std::optional<tripoint_bub_ms> p = get_coordinates( capture_win, offset, center_cursor );
+    if( p ) {
+        return tripoint_rel_omt( p->raw() );
+    }
+    return std::nullopt;
+}
 
 std::optional<point> input_context::get_coordinates_text( const catacurses::window
         &capture_win ) const

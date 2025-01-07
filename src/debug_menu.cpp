@@ -48,6 +48,7 @@
 #include "creature_tracker.h"
 #include "cursesdef.h"
 #include "debug.h"
+#include "imgui_demo.h"
 #include "dialogue.h"
 #include "dialogue_chatbin.h"
 #include "dialogue_helpers.h"
@@ -272,6 +273,7 @@ std::string enum_to_string<debug_menu::debug_menu_index>( debug_menu::debug_menu
 		case debug_menu::debug_menu_index::EDIT_FACTION: return "EDIT_FACTION";
 		case debug_menu::debug_menu_index::WRITE_CITY_LIST: return "WRITE_CITY_LIST";
         case debug_menu::debug_menu_index::TALK_TOPIC: return "TALK_TOPIC";
+        case debug_menu::debug_menu_index::IMGUI_DEMO: return "IMGUI_DEMO";
         // *INDENT-ON*
         case debug_menu::debug_menu_index::last:
             break;
@@ -534,7 +536,7 @@ static void normalize_body( Character &u )
 
 static tripoint_abs_ms player_picks_tile()
 {
-    std::optional<tripoint> newpos = g->look_around();
+    std::optional<tripoint_bub_ms> newpos = g->look_around();
     return newpos ? get_map().getglobal( *newpos ) : get_player_character().get_location();
 }
 
@@ -697,12 +699,12 @@ static int creature_uilist()
 
 static void monster_edit_menu()
 {
-    std::vector<tripoint> locations;
+    std::vector<tripoint_bub_ms> locations;
     uilist monster_menu;
     int charnum = 0;
     for( const monster &mon : g->all_monsters() ) {
         monster_menu.addentry( charnum++, true, MENU_AUTOASSIGN, mon.disp_name() );
-        locations.emplace_back( mon.pos() );
+        locations.emplace_back( mon.pos_bub() );
     }
 
     if( locations.empty() ) {
@@ -900,6 +902,7 @@ static int info_uilist( bool display_all_entries = true )
             { uilist_entry( debug_menu_index::TEST_MAP_EXTRA_DISTRIBUTION, true, 'e', _( "Test map extra list" ) ) },
             { uilist_entry( debug_menu_index::GENERATE_EFFECT_LIST, true, 'L', _( "Generate effect list" ) ) },
             { uilist_entry( debug_menu_index::WRITE_CITY_LIST, true, 'C', _( "Write city list to cities.output" ) ) },
+            { uilist_entry( debug_menu_index::IMGUI_DEMO, true, 'u', _( "Open ImGui demo screen" ) ) },
         };
         uilist_initializer.insert( uilist_initializer.begin(), debug_only_options.begin(),
                                    debug_only_options.end() );
@@ -1387,7 +1390,9 @@ static void change_spells( Character &character )
             character.magic->get_spellbook().emplace( splt.id, spl );
         }
 
-        character.magic->get_spell( splt.id ).set_exp( spell::exp_for_level( spell_level ) );
+        // storing the spell to be used instead of getting it twice somehow breaks the debug functionality.
+        int set_to_exp = character.magic->get_spell( splt.id ).exp_for_level( spell_level );
+        character.magic->get_spell( splt.id ).set_exp( set_to_exp );
     };
 
     ui_adaptor spellsui;
@@ -1725,11 +1730,11 @@ static void spawn_artifact()
         if( query_int( artifact_max_attributes, _( "Enter max attributes:" ) )
             && query_int( artifact_power_level, _( "Enter power level:" ) )
             && query_int( artifact_max_negative_value, _( "Enter negative power limit:" ) ) ) {
-            if( const std::optional<tripoint> center = g->look_around() ) {
+            if( const std::optional<tripoint_bub_ms> center = g->look_around() ) {
                 if( query_yn( _( "Is the artifact resonant?" ) ) ) {
                     artifact_is_resonant = true;
                 }
-                here.spawn_artifact( tripoint_bub_ms( *center ), relic_list[relic_menu.ret],
+                here.spawn_artifact( *center, relic_list[relic_menu.ret],
                                      artifact_max_attributes,
                                      artifact_power_level, artifact_max_negative_value, artifact_is_resonant );
             }
@@ -1739,13 +1744,13 @@ static void spawn_artifact()
 
 static void teleport_short()
 {
-    const std::optional<tripoint> where = g->look_around();
+    const std::optional<tripoint_bub_ms> where = g->look_around();
     const Character &player_character = get_player_character();
-    if( !where || *where == player_character.pos() ) {
+    if( !where || *where == player_character.pos_bub() ) {
         return;
     }
     g->place_player( *where );
-    const tripoint new_pos( player_character.pos() );
+    const tripoint_bub_ms new_pos( player_character.pos_bub() );
     add_msg( _( "You teleport to point %s." ), new_pos.to_string() );
 }
 
@@ -1837,7 +1842,7 @@ static void spawn_nested_mapgen()
     nest_menu.query();
     const int nest_choice = nest_menu.ret;
     if( nest_choice >= 0 && nest_choice < static_cast<int>( nest_ids.size() ) ) {
-        const std::optional<tripoint> where = g->look_around();
+        const std::optional<tripoint_bub_ms> where = g->look_around();
         if( !where ) {
             return;
         }
@@ -2284,16 +2289,16 @@ static faction *select_faction()
 
 static void character_edit_menu()
 {
-    std::vector< tripoint > locations;
+    std::vector< tripoint_bub_ms > locations;
     uilist charmenu;
     charmenu.title = _( "Edit which character?" );
     int charnum = 0;
     avatar &player_character = get_avatar();
     charmenu.addentry( charnum++, true, MENU_AUTOASSIGN, "%s", _( "You" ) );
-    locations.emplace_back( player_character.pos() );
+    locations.emplace_back( player_character.pos_bub() );
     for( const npc &guy : g->all_npcs() ) {
         charmenu.addentry( charnum++, true, MENU_AUTOASSIGN, guy.get_name() );
-        locations.emplace_back( guy.pos() );
+        locations.emplace_back( guy.pos_bub() );
     }
 
     pointmenu_cb callback( locations );
@@ -2429,7 +2434,7 @@ static void character_edit_menu()
             you.remove_weapon();
             break;
         case D_DROP_ITEMS:
-            you.drop( game_menus::inv::multidrop( you ), you.pos() );
+            you.drop( game_menus::inv::multidrop( you ), you.pos_bub() );
             break;
         case D_ITEM_WORN: {
             item_location loc = game_menus::inv::titled_menu( player_character, _( "Make target equip" ) );
@@ -2604,7 +2609,7 @@ static void character_edit_menu()
             mission_debug::edit( you );
             break;
         case D_TELE: {
-            if( const std::optional<tripoint> newpos = g->look_around() ) {
+            if( const std::optional<tripoint_bub_ms> newpos = g->look_around() ) {
                 you.setpos( *newpos );
                 if( you.is_avatar() ) {
                     if( you.is_mounted() ) {
@@ -3427,7 +3432,7 @@ static void generate_effect_list()
 
 static void gen_sound()
 {
-    const std::optional<tripoint> where = g->look_around();
+    const std::optional<tripoint_bub_ms> where = g->look_around();
     if( !where ) {
         return;
     }
@@ -3483,7 +3488,7 @@ static void kill_area()
     popup.on_top( true );
     popup.message( "%s", _( "Select first point." ) );
 
-    tripoint initial_pos = get_avatar().pos();
+    tripoint_bub_ms initial_pos = get_avatar().pos_bub();
     const look_around_result first = g->look_around( false, initial_pos, initial_pos,
                                      false, true, false );
 
@@ -3570,13 +3575,13 @@ static void show_sound()
             player_character.view_offset.xy().raw() + point( POSX - player_character.posx(), POSY - player_character.posy() )
         };
         wattron( g->w_terrain, c_yellow );
-        for( const tripoint &sound : sounds_to_draw.first ) {
-            mvwaddch( g->w_terrain, offset + sound.xy(), '?' );
+        for( const tripoint_bub_ms &sound : sounds_to_draw.first ) {
+            mvwaddch( g->w_terrain, sound.xy().raw() + offset, '?' );
         }
         wattroff( g->w_terrain, c_yellow );
         wattron( g->w_terrain, c_red );
-        for( const tripoint &sound : sounds_to_draw.second ) {
-            mvwaddch( g->w_terrain, offset + sound.xy(), '?' );
+        for( const tripoint_bub_ms &sound : sounds_to_draw.second ) {
+            mvwaddch( g->w_terrain, sound.xy().raw() + offset, '?' );
         }
         wattroff( g->w_terrain, c_red );
     } );
@@ -3592,15 +3597,15 @@ static void show_sound()
 static void set_automove()
 {
     avatar &player_character = get_avatar();
-    const std::optional<tripoint> dest = g->look_around();
-    if( !dest || *dest == player_character.pos() ) {
+    const std::optional<tripoint_bub_ms> dest = g->look_around();
+    if( !dest || *dest == player_character.pos_bub() ) {
         return;
     }
 
-    // TODO: fix point types
-    auto rt = get_map().route( player_character.pos_bub(), tripoint_bub_ms( *dest ),
-                               player_character.get_pathfinding_settings(),
-                               player_character.get_path_avoid() );
+    std::vector<tripoint_bub_ms> rt = get_map().route( player_character.pos_bub(),
+                                      tripoint_bub_ms( *dest ),
+                                      player_character.get_pathfinding_settings(),
+                                      player_character.get_path_avoid() );
     if( !rt.empty() ) {
         player_character.set_destination( rt );
     } else {
@@ -3771,6 +3776,14 @@ static void wind_speed()
         weather.windspeed_override = selected_wind_speed;
         weather.set_nextweather( calendar::turn );
     }
+}
+
+
+
+static void run_imgui_demo()
+{
+    imgui_demo_ui demo;
+    demo.run();
 }
 
 static void write_city_list()
@@ -4334,6 +4347,10 @@ void debug()
 
         case debug_menu_index::WRITE_CITY_LIST:
             write_city_list();
+            break;
+
+        case debug_menu_index::IMGUI_DEMO:
+            run_imgui_demo();
             break;
 
         case debug_menu_index::TALK_TOPIC:
