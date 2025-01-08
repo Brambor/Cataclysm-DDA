@@ -53,7 +53,8 @@ input_context get_default_mode_input_context();
 enum quit_status {
     QUIT_NO = 0,    // Still playing
     QUIT_SUICIDE,   // Quit with 'Q'
-    QUIT_SAVED,     // Saved and quit
+    QUIT_SAVED,     // Saved and quit to main menu
+    QUIT_SAVED_DESKTOP, // Saved and quit to desktop
     QUIT_NOSAVED,   // Quit without saving
     QUIT_DIED,      // Actual death
     QUIT_WATCH,     // Died, and watching aftermath
@@ -1319,7 +1320,7 @@ namespace cata_event_dispatch
 // @param p The point the avatar moved from in absolute coordinates
 // @param u The avatar (should have already moved to the new pos)
 // @param m The map the avatar is moving on
-void avatar_moves( const tripoint_abs_ms &old_abs_pos, const avatar &u, const map &m );
+void avatar_moves( const tripoint_abs_ms &old_abs_pos, avatar &u, const map &m );
 } // namespace cata_event_dispatch
 
 bool are_we_quitting();

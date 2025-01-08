@@ -2550,6 +2550,12 @@
   },
   {
     "type": "keybinding",
+    "name": "Acquire graph",
+    "category": "DEFAULTMODE",
+    "id": "acquire_graph"
+  },
+  {
+    "type": "keybinding",
     "name": "Consume item (all items)",
     "category": "DEFAULTMODE",
     "id": "eat",
@@ -3296,6 +3302,12 @@
   },
   {
     "type": "keybinding",
+    "id": "open_path_manager",
+    "name": "Path manager",
+    "category": "DEFAULTMODE"
+  },
+  {
+    "type": "keybinding",
     "id": "SCROLL_ITEM_INFO_UP",
     "category": "LIST_ITEMS",
     "name": "Scroll item info up",
@@ -3529,6 +3541,72 @@
     "category": "HELP_KEYBINDINGS",
     "name": "Execute action keybinding",
     "bindings": [ { "input_method": "keyboard_any", "key": "." }, { "input_method": "keyboard_code", "key": "KEYPAD_PERIOD" } ]
+  },
+  {
+    "type": "keybinding",
+    "id": "WALK_PATH",
+    "category": "PATH_MANAGER",
+    "name": "Walk path"
+  },
+  {
+    "type": "keybinding",
+    "id": "WALK_PATH_FROM_MIDDLE",
+    "category": "PATH_MANAGER",
+    "name": "Walk path from middle"
+  },
+  {
+    "type": "keybinding",
+    "id": "START_RECORDING",
+    "category": "PATH_MANAGER",
+    "name": "Start recording"
+  },
+  {
+    "type": "keybinding",
+    "id": "CONTINUE_RECORDING",
+    "category": "PATH_MANAGER",
+    "name": "Continue recording"
+  },
+  {
+    "type": "keybinding",
+    "id": "STOP_RECORDING",
+    "category": "PATH_MANAGER",
+    "name": "Stop recording"
+  },
+  {
+    "type": "keybinding",
+    "id": "DELETE_PATH",
+    "category": "PATH_MANAGER",
+    "name": "Delete"
+  },
+  {
+    "type": "keybinding",
+    "id": "MOVE_PATH_UP",
+    "category": "PATH_MANAGER",
+    "name": "Move up"
+  },
+  {
+    "type": "keybinding",
+    "id": "MOVE_PATH_DOWN",
+    "category": "PATH_MANAGER",
+    "name": "Move down"
+  },
+  {
+    "type": "keybinding",
+    "id": "RENAME_START",
+    "category": "PATH_MANAGER",
+    "name": "Rename start"
+  },
+  {
+    "type": "keybinding",
+    "id": "RENAME_END",
+    "category": "PATH_MANAGER",
+    "name": "Rename end"
+  },
+  {
+    "type": "keybinding",
+    "id": "SWAP_START_END",
+    "category": "PATH_MANAGER",
+    "name": "Swap start with end"
   },
   {
     "type": "keybinding",

@@ -608,10 +608,10 @@ void inventory_entry::cache_denial( inventory_selector_preset const &preset ) co
 {
     if( !denial ) {
         denial.emplace( preset.get_denial( *this ) );
-        enabled = denial->empty();
+        enabled = is_item() && preset.get_enabled( any_item() );
     }
     if( is_collation_header() ) {
-        collation_meta->enabled = denial->empty();
+        collation_meta->enabled = is_item() && preset.get_enabled( any_item() );
     }
 }
 
@@ -719,6 +719,8 @@ std::function<bool( const inventory_entry & )> inventory_selector_preset::get_fi
     };
 }
 
+void inventory_selector_preset::on_filter_change( const std::string &/*filter*/ ) const {};
+
 std::string inventory_selector_preset::get_caption( const inventory_entry &entry ) const
 {
     size_t count = entry.get_stack_size();
@@ -755,35 +757,37 @@ std::string inventory_selector_preset::get_cell_text( const inventory_entry &ent
         std::string text = cells[cell_index].get_text( entry );
         const item &actual_item = *entry.locations.front();
         const std::string info_display = get_option<std::string>( "DETAILED_CONTAINERS" );
-        // if we want no additional info skip this
-        if( info_display != "NONE" ) {
-            // if we want additional info for all items or it is worn then add the additional info
-            if( info_display == "ALL" || ( info_display == "WORN" &&
-                                           is_worn_id( entry.get_category_ptr()->get_id() ) &&
-                                           actual_item.is_worn_by_player() ) ) {
-                if( cell_index == 0 && !text.empty() &&
-                    actual_item.is_container() && actual_item.has_unrestricted_pockets() ) {
-                    const units::volume total_capacity = actual_item.get_total_capacity( true );
-                    const units::mass total_capacity_weight = actual_item.get_total_weight_capacity( true );
-                    const units::length max_containable_length = actual_item.max_containable_length( true );
-
-                    const units::volume actual_capacity = actual_item.get_total_contained_volume( true );
-                    const units::mass actual_capacity_weight = actual_item.get_total_contained_weight( true );
-
-                    container_data container_data = {
-                        actual_capacity,
-                        total_capacity,
-                        actual_capacity_weight,
-                        total_capacity_weight,
-                        max_containable_length
-                    };
-                    std::string formatted_string = container_data.to_formatted_string( false );
-
-                    text = text + string_format( " %s", formatted_string );
-                }
-            }
+        if(
+            // if we want no additional info skip this
+            info_display == "NONE"
+            // if we don't want additional info for all items and it is not worn then skip it
+            || ( info_display != "ALL" && ( info_display != "WORN"
+                                            || !is_worn_id( entry.get_category_ptr()->get_id() )
+                                            || !actual_item.is_worn_by_player() ) )
+            || cell_index != 0
+            || text.empty()
+            || !actual_item.is_container()
+            || !actual_item.has_unrestricted_pockets()
+        ) {
+            return text;
         }
-        return text;
+        const units::volume total_capacity = actual_item.get_total_capacity( true );
+        const units::mass total_capacity_weight = actual_item.get_total_weight_capacity( true );
+        const units::length max_containable_length = actual_item.max_containable_length( true );
+
+        const units::volume actual_capacity = actual_item.get_total_contained_volume( true );
+        const units::mass actual_capacity_weight = actual_item.get_total_contained_weight( true );
+
+        container_data container_data = {
+            actual_capacity,
+            total_capacity,
+            actual_capacity_weight,
+            total_capacity_weight,
+            max_containable_length
+        };
+        std::string formatted_string = container_data.to_formatted_string( false );
+
+        return text + string_format( " %s", formatted_string );
     } else if( cell_index != 0 ) {
         return replace_colors( cells[cell_index].title );
     } else {
@@ -824,6 +828,33 @@ void inventory_selector_preset::append_cell( const
         return;
     }
     cells.emplace_back( func, title, stub );
+}
+
+// TODO should not be const
+void inventory_selector_preset::replace_cell( const
+        std::function<std::string( const item_location & )> &func,
+        const std::string &title, const std::string &stub ) const
+{
+    // Don't capture by reference here. The func should be able to die earlier than the object itself
+    replace_cell( std::function<std::string( const inventory_entry & )>( [ func ](
+    const inventory_entry & entry ) {
+        return func( entry.any_item() );
+    } ), title, stub );
+}
+
+void inventory_selector_preset::replace_cell( const
+        std::function<std::string( const inventory_entry & )> &func,
+        const std::string &title, const std::string &stub ) const
+{
+    const auto iter = std::find_if( cells.begin(), cells.end(), [ &title ]( const cell_t &cell ) {
+        return cell.title == title;
+    } );
+    if( iter == cells.end() ) {
+        debugmsg( "Tried to replace a non duplicate cell \"%s\": ignored.", title.c_str() );
+        return;
+    }
+    *iter = {func, title, stub};
+    //reset_entry_cell_cache();
 }
 
 std::string inventory_selector_preset::cell_t::get_text( const inventory_entry &entry ) const
@@ -1697,6 +1728,7 @@ void inventory_column::draw( const catacurses::window &win, const point &p,
             }
         }
 
+        // TODO: make denial empty and make extra column for denial
         size_t count = denial.empty() ? cells.size() : 1;
 
         for( size_t cell_index = 0; cell_index < count; ++cell_index ) {
@@ -1739,7 +1771,9 @@ void inventory_column::draw( const catacurses::window &win, const point &p,
                     trim_and_print( win, point( text_x - 1, yy ), 1, col,
                                     stat ? "▶" : "▼" );
                 }
-                if( entry.is_item() && ( selected || !entry.is_selectable() ) ) {
+                /*if( entry.is_item() && !selected && !entry.is_selectable() && denial.empty() ) {
+                    trim_and_print( win, point( text_x, yy ), text_width, entry_cell_cache.color, text );
+                } else*/ if( entry.is_item() && ( selected || ( !entry.is_selectable() && !denial.empty() ) ) ) {
                     trim_and_print( win, point( text_x, yy ), text_width, selected ? h_white : c_dark_gray,
                                     remove_color_tags( text ) );
                 } else if( entry.is_item() && entry.highlight_as_parent ) {
@@ -1761,6 +1795,7 @@ void inventory_column::draw( const catacurses::window &win, const point &p,
                     }
                     entry.highlight_as_child = false;
                 } else {
+                    // TODO this screws the colors of `,`, `, and`
                     trim_and_print( win, point( text_x, yy ), text_width, entry_cell_cache.color, text );
                 }
             }
@@ -2727,7 +2762,9 @@ void inventory_selector::set_filter( const std::string &str )
     filter = str;
     for( inventory_column *const elem : columns ) {
         elem->set_filter( filter );
+        // reset_entry_cell_cache();
     }
+    preset.on_filter_change( filter );
 }
 
 std::string inventory_selector::get_filter() const
@@ -2962,6 +2999,7 @@ inventory_input inventory_selector::process_input( const std::string &action, in
                 if( res.entry != nullptr && res.entry->is_selectable() ) {
                     return res;
                 }
+                // todo denial popup
                 if( res.entry == nullptr && res.action == "SELECT" ) {
                     p.x++;
                     res.entry = find_entry_by_coordinate( p );
@@ -3078,6 +3116,8 @@ void inventory_selector::on_input( const inventory_input &input )
 
 void inventory_selector::on_change( const inventory_entry &entry )
 {
+    // TODO does not reset. Workaround during testing: use "Toggle language to English" option
+    entry.reset_entry_cell_cache();
     for( inventory_column *&elem : columns ) {
         elem->on_change( entry );
     }
@@ -3816,6 +3856,7 @@ void inventory_compare_selector::toggle_entry( inventory_entry *entry )
     const item *it = &*entry->any_item();
     const auto iter = std::find( compared.begin(), compared.end(), it );
 
+    // if not found in compare select it, otherwise deselect it
     entry->chosen_count = iter == compared.end() ? 1 : 0;
 
     if( entry->chosen_count != 0 ) {
@@ -3868,19 +3909,20 @@ void inventory_multiselector::deselect_contained_items()
         inventory_items.push_back( loc_front );
     }
     for( item_location loc_container : inventory_items ) {
-        if( !loc_container->empty() ) {
-            for( inventory_column *col : get_all_columns() ) {
-                for( inventory_entry *selected : col->get_entries( []( const inventory_entry & entry ) {
-                return entry.chosen_count > 0;
-            } ) ) {
-                    if( !selected->is_item() ) {
-                        continue;
-                    }
-                    for( const item *item_contained : loc_container->all_items_ptr() ) {
-                        for( const item_location &selected_loc : selected->locations ) {
-                            if( selected_loc.get_item() == item_contained ) {
-                                set_chosen_count( *selected, 0 );
-                            }
+        if( loc_container->empty() ) {
+            continue;
+        }
+        for( inventory_column *col : get_all_columns() ) {
+            for( inventory_entry *selected : col->get_entries( []( const inventory_entry & entry ) {
+            return entry.chosen_count > 0;
+        } ) ) {
+                if( !selected->is_item() ) {
+                    continue;
+                }
+                for( const item *item_contained : loc_container->all_items_ptr() ) {
+                    for( const item_location &selected_loc : selected->locations ) {
+                        if( selected_loc.get_item() == item_contained ) {
+                            set_chosen_count( *selected, 0 );
                         }
                     }
                 }
@@ -3891,17 +3933,17 @@ void inventory_multiselector::deselect_contained_items()
         for( inventory_entry *selected : col->get_entries(
         []( const inventory_entry & entry ) {
         return entry.is_item() && entry.chosen_count > 0 && entry.locations.front()->is_frozen_liquid() &&
-                   //Frozen liquids can be selected if it have the SHREDDED flag.
+                   // Frozen liquid can be selected if it has the SHREDDED flag.
                    !entry.locations.front()->has_flag( STATIC( flag_id( "SHREDDED" ) ) ) &&
                    (
-                       ( //Frozen liquids on the map are not selectable if they can't be crushed.
+                       ( // Frozen liquids on the map are not selectable if they can't be crushed.
                            entry.locations.front().where() == item_location::type::map &&
                            !get_player_character().can_crush_frozen_liquid( entry.locations.front() ).success() ) ||
-                       ( //Weapon in hand is can selectable.
+                       ( // Weapon in hand is selectable.
                            entry.locations.front().where() == item_location::type::character &&
                            !entry.locations.front().has_parent() &&
                            entry.locations.front() != get_player_character().used_weapon() ) ||
-                       ( //Frozen liquids are unselectable if they don't have SHREDDED flag and can't be crushed in a container.
+                       ( // Frozen liquids are unselectable if they don't have SHREDDED flag and can't be crushed in a container.
                            entry.locations.front().has_parent() &&
                            entry.locations.front().where() == item_location::type::container &&
                            !get_player_character().can_crush_frozen_liquid( entry.locations.front() ).success() )
@@ -4303,9 +4345,8 @@ void pickup_selector::remove_from_to_use( item_location &it )
         if( iter->first == it ) {
             to_use.erase( iter );
             return;
-        } else {
-            iter++;
         }
+        iter++;
     }
 }
 
@@ -4465,6 +4506,7 @@ unload_selector::unload_selector( Character &p,
     set_hint( hint_string() );
 }
 
+// TODO add this for disassembly menu fot `T`ravel to
 std::string unload_selector::hint_string()
 {
     std::string mode = uistate.unload_auto_contain ? _( "Auto" ) : _( "Manual" );

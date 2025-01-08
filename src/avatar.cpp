@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 
+#include "acquire_graph.h"
 #include "action.h"
 #include "activity_actor_definitions.h"
 #include "bodypart.h"
@@ -61,6 +62,7 @@
 #include "overmap.h"
 #include "overmapbuffer.h"
 #include "pathfinding.h"
+#include "path_manager.h"
 #include "pimpl.h"
 #include "profession.h"
 #include "ranged.h"
@@ -406,12 +408,28 @@ void avatar::remove_active_mission( mission &cur_mission )
     }
 }
 
+acquire_graph *avatar::get_acquire_graph()
+{
+    if( acquire_graph_ptr == nullptr ) {
+        acquire_graph_ptr = std::make_unique<acquire_graph>();
+    }
+    return acquire_graph_ptr.get();
+}
+
 diary *avatar::get_avatar_diary()
 {
     if( a_diary == nullptr ) {
         a_diary = std::make_unique<diary>();
     }
     return a_diary.get();
+}
+
+path_manager *avatar::get_path_manager()
+{
+    if( a_path_manager == nullptr ) {
+        a_path_manager = std::make_unique<path_manager>();
+    }
+    return a_path_manager.get();
 }
 
 bool avatar::read( item_location &book, item_location ereader )

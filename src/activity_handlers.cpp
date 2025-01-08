@@ -2864,48 +2864,49 @@ void activity_handlers::move_loot_do_turn( player_activity *act, Character *you 
 
 void activity_handlers::travel_do_turn( player_activity *act, Character *you )
 {
-    if( !you->omt_path.empty() ) {
-        you->omt_path.pop_back();
-        if( you->omt_path.empty() ) {
-            you->add_msg_if_player( m_info, _( "You have reached your destination." ) );
-            act->set_to_null();
-            ui::omap::force_quit();
-            return;
-        }
-        const tripoint_abs_omt next_omt = you->omt_path.back();
-        tripoint_abs_ms waypoint;
-        if( you->omt_path.size() == 1 ) {
-            // if next omt is the final one, target its midpoint
-            waypoint = midpoint( project_bounds<coords::ms>( next_omt ) );
-        } else {
-            // otherwise target the middle of the edge nearest to our current location
-            const tripoint_abs_ms cur_omt_mid = midpoint( project_bounds<coords::ms>
-                                                ( you->global_omt_location() ) );
-            waypoint = clamp( cur_omt_mid, project_bounds<coords::ms>( next_omt ) );
-        }
-        map &here = get_map();
-        tripoint_bub_ms centre_sub = here.bub_from_abs( waypoint );
-        if( !here.passable( centre_sub ) ) {
-            tripoint_range<tripoint_bub_ms> candidates = here.points_in_radius( centre_sub, 2 );
-            for( const tripoint_bub_ms &elem : candidates ) {
-                if( here.passable( elem ) ) {
-                    centre_sub = elem;
-                    break;
-                }
+    if( you->omt_path.empty() ) {
+        you->add_msg_if_player( m_info, _( "You have reached your destination." ) );
+        act->set_to_null();
+        ui::omap::force_quit();
+        return;
+    }
+    you->omt_path.pop_back();
+    if( you->omt_path.empty() ) {
+        you->add_msg_if_player( m_info, _( "You have reached your destination." ) );
+        act->set_to_null();
+        ui::omap::force_quit();
+        return;
+    }
+    const tripoint_abs_omt next_omt = you->omt_path.back();
+    tripoint_abs_ms waypoint;
+    if( you->omt_path.size() == 1 ) {
+        // if next omt is the final one, target its midpoint
+        waypoint = midpoint( project_bounds<coords::ms>( next_omt ) );
+    } else {
+        // otherwise target the middle of the edge nearest to our current location
+        const tripoint_abs_ms cur_omt_mid = midpoint( project_bounds<coords::ms>
+                                            ( you->global_omt_location() ) );
+        waypoint = clamp( cur_omt_mid, project_bounds<coords::ms>( next_omt ) );
+    }
+    map &here = get_map();
+    tripoint_bub_ms centre_sub = here.bub_from_abs( waypoint );
+    if( !here.passable( centre_sub ) ) {
+        // todo change 2 to higher number. 2 is too little in forests
+        tripoint_range<tripoint_bub_ms> candidates = here.points_in_radius( centre_sub, 2 );
+        for( const tripoint_bub_ms &elem : candidates ) {
+            if( here.passable( elem ) ) {
+                centre_sub = elem;
+                break;
             }
         }
-        const std::vector<tripoint_bub_ms> route_to =
-            here.route( you->pos_bub(), centre_sub, you->get_pathfinding_settings(),
-                        you->get_path_avoid() );
-        if( !route_to.empty() ) {
-            const activity_id act_travel = ACT_TRAVELLING;
-            you->set_destination( route_to, player_activity( act_travel ) );
-        } else {
-            you->add_msg_if_player( m_warning, _( "You cannot reach that destination." ) );
-            ui::omap::force_quit();
-        }
+    }
+    const std::vector<tripoint_bub_ms> route_to =
+        here.route( you->pos_bub(), centre_sub, you->get_pathfinding_settings(),
+                    you->get_path_avoid() );
+    if( !route_to.empty() ) {
+        you->set_destination( route_to, player_activity( ACT_TRAVELLING ) );
     } else {
-        you->add_msg_if_player( m_info, _( "You have reached your destination." ) );
+        you->add_msg_if_player( m_warning, _( "You cannot reach that destination." ) );
         ui::omap::force_quit();
     }
     act->set_to_null();

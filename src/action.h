@@ -154,6 +154,8 @@ enum action_id : int {
     ACTION_WEAR,
     /** Open the take-off clothing selection menu */
     ACTION_TAKE_OFF,
+    /** Open the acquire graph menu */
+    ACTION_ACQUIRE_GRAPH,
     /** Open the default consume item menu */
     ACTION_EAT,
     /** Open the custom consume item menu */
@@ -274,6 +276,8 @@ enum action_id : int {
     ACTION_HELP,
     /** Display Diary window*/
     ACTION_DIARY,
+    /** Open Path manager*/
+    ACTION_PATH_MANAGER,
     /** Open body status menu **/
     ACTION_BODYSTATUS,
     /** Display main menu */

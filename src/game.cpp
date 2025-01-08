@@ -37,6 +37,7 @@
 #endif
 
 #include "achievement.h"
+#include "acquire_graph.h"
 #include "action.h"
 #include "activity_actor_definitions.h"
 #include "activity_handlers.h"
@@ -166,6 +167,7 @@
 #include "panels.h"
 #include "past_achievements_info.h"
 #include "path_info.h"
+#include "path_manager.h"
 #include "pathfinding.h"
 #include "pickup.h"
 #include "player_activity.h"
@@ -2645,6 +2647,7 @@ input_context get_default_mode_input_context()
     ctxt.register_action( "apply_wielded" );
     ctxt.register_action( "wear" );
     ctxt.register_action( "take_off" );
+    ctxt.register_action( "acquire_graph" );
     ctxt.register_action( "eat" );
     ctxt.register_action( "open_consume" );
     ctxt.register_action( "read" );
@@ -2706,6 +2709,7 @@ input_context get_default_mode_input_context()
     ctxt.register_action( "open_autonotes" );
     ctxt.register_action( "open_safemode" );
     ctxt.register_action( "open_distraction_manager" );
+    ctxt.register_action( "open_path_manager" );
     ctxt.register_action( "open_color" );
     ctxt.register_action( "open_world_mods" );
     ctxt.register_action( "debug" );
@@ -3189,9 +3193,21 @@ bool game::load( const save_t &name )
                 }
             },
             {
+                _( "Acquire graph" ), [&]()
+                {
+                    u.get_acquire_graph()->load();
+                }
+            },
+            {
                 _( "Diary" ), [&]()
                 {
                     u.get_avatar_diary()->load();
+                }
+            },
+            {
+                _( "Path Manager" ), [&]()
+                {
+                    u.get_path_manager()->load();
                 }
             },
             {
@@ -3464,8 +3480,11 @@ bool game::save_player_data()
         save_shortcuts( fout );
     }, _( "quick shortcuts" ) );
 #endif
+    const bool saved_acquire_graph = u.get_acquire_graph()->store();
     const bool saved_diary = u.get_avatar_diary()->store();
-    return saved_data && saved_map_memory && saved_log && saved_diary
+    const bool saved_path_manager = u.get_path_manager()->store();
+    return saved_data && saved_map_memory && saved_log && saved_acquire_graph && saved_diary
+           && saved_path_manager
 #if defined(__ANDROID__)
            && saved_shortcuts
 #endif
@@ -14038,7 +14057,7 @@ void game::climb_down_using( const tripoint_bub_ms &examp, climbing_aid_id aid_i
 
 namespace cata_event_dispatch
 {
-void avatar_moves( const tripoint_abs_ms &old_abs_pos, const avatar &u, const map &m )
+void avatar_moves( const tripoint_abs_ms &old_abs_pos, avatar &u, const map &m )
 {
     const tripoint_bub_ms new_pos = u.pos_bub();
     const tripoint_abs_ms new_abs_pos = m.getglobal( new_pos );
@@ -14046,6 +14065,7 @@ void avatar_moves( const tripoint_abs_ms &old_abs_pos, const avatar &u, const ma
     if( u.is_mounted() ) {
         mount_type = u.mounted_creature->type->id;
     }
+    u.get_path_manager()->record_step( new_abs_pos );
     get_event_bus().send<event_type::avatar_moves>( mount_type, m.ter( new_pos ).id(),
             u.current_movement_mode(), u.is_underwater(), new_pos.z() );
 

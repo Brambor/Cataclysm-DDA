@@ -224,6 +224,8 @@ std::string action_ident( action_id act )
             return "wear";
         case ACTION_TAKE_OFF:
             return "take_off";
+        case ACTION_ACQUIRE_GRAPH:
+            return "acquire_graph";
         case ACTION_EAT:
             return "eat";
         case ACTION_OPEN_CONSUME:
@@ -400,6 +402,8 @@ std::string action_ident( action_id act )
             return "main_menu";
         case ACTION_DIARY:
             return "diary";
+        case ACTION_PATH_MANAGER:
+            return "open_path_manager";
         case ACTION_KEYBINDINGS:
             return "HELP_KEYBINDINGS";
         case ACTION_OPTIONS:

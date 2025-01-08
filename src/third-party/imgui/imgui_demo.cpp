@@ -96,6 +96,7 @@ Index of this file:
 // [SECTION] Example App: Custom Rendering using ImDrawList API / ShowExampleAppCustomRendering()
 // [SECTION] Example App: Documents Handling / ShowExampleAppDocuments()
 // [SECTION] Example App: Assets Browser / ShowExampleAppAssetsBrowser()
+// [SECTION] Example App: scrollYandflatnav / ShowExampleAppscrollYandflatnav()
 
 */
 
@@ -205,6 +206,7 @@ Index of this file:
 struct ImGuiDemoWindowData;
 static void ShowExampleAppMainMenuBar();
 static void ShowExampleAppAssetsBrowser(bool* p_open);
+static void ShowExampleAppscrollYandflatnav(bool* p_open);
 static void ShowExampleAppConsole(bool* p_open);
 static void ShowExampleAppCustomRendering(bool* p_open);
 static void ShowExampleAppDocuments(bool* p_open);
@@ -349,6 +351,7 @@ struct ImGuiDemoWindowData
     // Examples Apps (accessible from the "Examples" menu)
     bool ShowMainMenuBar = false;
     bool ShowAppAssetsBrowser = false;
+    bool ShowAppscrollYandflatnav = false;
     bool ShowAppConsole = false;
     bool ShowAppCustomRendering = false;
     bool ShowAppDocuments = false;
@@ -392,6 +395,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
     if (demo_data.ShowMainMenuBar)          { ShowExampleAppMainMenuBar(); }
     if (demo_data.ShowAppDocuments)         { ShowExampleAppDocuments(&demo_data.ShowAppDocuments); }
     if (demo_data.ShowAppAssetsBrowser)     { ShowExampleAppAssetsBrowser(&demo_data.ShowAppAssetsBrowser); }
+    if (demo_data.ShowAppscrollYandflatnav) { ShowExampleAppscrollYandflatnav(&demo_data.ShowAppscrollYandflatnav); }
     if (demo_data.ShowAppConsole)           { ShowExampleAppConsole(&demo_data.ShowAppConsole); }
     if (demo_data.ShowAppCustomRendering)   { ShowExampleAppCustomRendering(&demo_data.ShowAppCustomRendering); }
     if (demo_data.ShowAppLog)               { ShowExampleAppLog(&demo_data.ShowAppLog); }
@@ -707,6 +711,7 @@ static void ShowDemoWindowMenuBar(ImGuiDemoWindowData* demo_data)
 
             ImGui::SeparatorText("Mini apps");
             ImGui::MenuItem("Assets Browser", NULL, &demo_data->ShowAppAssetsBrowser);
+            ImGui::MenuItem("scroll Y nav broke", NULL, &demo_data->ShowAppscrollYandflatnav);
             ImGui::MenuItem("Console", NULL, &demo_data->ShowAppConsole);
             ImGui::MenuItem("Custom rendering", NULL, &demo_data->ShowAppCustomRendering);
             ImGui::MenuItem("Documents", NULL, &demo_data->ShowAppDocuments);
@@ -3512,6 +3517,7 @@ static void ShowDemoWindowMultiSelect(ImGuiDemoWindowData* demo_data)
         if (ImGui::TreeNode("Multi-Select (tiled assets browser)"))
         {
             ImGui::Checkbox("Assets Browser", &demo_data->ShowAppAssetsBrowser);
+            ImGui::Checkbox("scroll Y nav broke", &demo_data->ShowAppscrollYandflatnav);
             ImGui::Text("(also access from 'Examples->Assets Browser' in menu)");
             ImGui::TreePop();
         }
@@ -10374,6 +10380,25 @@ void ShowExampleAppAssetsBrowser(bool* p_open)
     IMGUI_DEMO_MARKER("Examples/Assets Browser");
     static ExampleAssetsBrowser assets_browser;
     assets_browser.Draw("Example: Assets Browser", p_open);
+}
+
+#include <string>
+
+void ShowExampleAppscrollYandflatnav(bool* p_open)
+{
+    ImGui::Begin( "scroll Y breaks nav", p_open );
+
+    ImGui::BeginChild( "table", ImVec2( 100, 100 ), ImGuiChildFlags_NavFlattened );
+    // Deleting ImGuiTableFlags_ScrollY makes ImGuiChildFlags_NavFlattened work
+    ImGui::BeginTable( "PATH_MANAGER", 1, ImGuiTableFlags_ScrollY );
+    for( int i = 0; i < 3; ++i ) {
+        ImGui::TableNextColumn();
+        ImGui::Button( std::to_string( i ).c_str() );
+    }
+    ImGui::EndTable();
+    ImGui::EndChild();
+
+    ImGui::End();
 }
 
 // End of Demo code

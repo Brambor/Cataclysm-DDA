@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "acquire_graph.h"
 #include "action.h"
 #include "activity_actor_definitions.h"
 #include "activity_type.h"
@@ -75,6 +76,7 @@
 #include "output.h"
 #include "overmap_ui.h"
 #include "panels.h"
+#include "path_manager.h"
 #include "player_activity.h"
 #include "popup.h"
 #include "ranged.h"
@@ -2582,6 +2584,10 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             takeoff();
             break;
 
+        case ACTION_ACQUIRE_GRAPH:
+            u.get_acquire_graph()->show();
+            break;
+
         case ACTION_EAT:
             if( !avatar_action::eat_here( player_character ) ) {
                 avatar_action::eat_or_use( player_character, game_menus::inv::consume() );
@@ -2933,6 +2939,10 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
 
         case ACTION_DISTRACTION_MANAGER:
             get_distraction_manager().show();
+            break;
+
+        case ACTION_PATH_MANAGER:
+            u.get_path_manager()->show();
             break;
 
         case ACTION_COLOR:
