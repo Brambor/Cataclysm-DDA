@@ -599,9 +599,6 @@ bool item_contents::empty() const
 
 bool item_contents::empty_container() const
 {
-    if( contents.empty() ) {
-        return true;
-    }
     for( const item_pocket &pocket : contents ) {
         if( !pocket.is_type( pocket_type::CONTAINER ) ) {
             continue;

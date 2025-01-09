@@ -6113,7 +6113,7 @@ void item::final_info( std::vector<iteminfo> &info, const iteminfo_query *parts,
                 crafts.emplace_back( can_make ? name : string_format( "<dark>%s</dark>", name ) );
             }
             const std::string recipes = enumerate_lcsorted_with_limit( crafts, 15 );
-            info.emplace_back( " DESCRIPTION", string_format( _( "You could use it to craft: %s" ), recipes ) );
+            info.emplace_back( "DESCRIPTION", string_format( _( "You could use it to craft: %s" ), recipes ) );
         }
     }
 
@@ -6167,7 +6167,7 @@ void item::final_info( std::vector<iteminfo> &info, const iteminfo_query *parts,
             const std::string installable_parts = enumerate_lcsorted_with_limit( result_parts, 15 );
 
             insert_separation_line( info );
-            info.emplace_back( " DESCRIPTION", string_format( install_where, installable_parts ) );
+            info.emplace_back( "DESCRIPTION", string_format( install_where, installable_parts ) );
         };
 
         print_parts( vparts, _( "You could install it in a vehicle: %s" ),

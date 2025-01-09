@@ -5454,6 +5454,7 @@ std::vector<const itype *> Item_factory::find( const std::function<bool( const i
     return res;
 }
 
+// TODO maybe this does static but needs dynamic too
 const std::vector<const itype *> &Item_factory::find_holster_for( const itype &it )
 {
     const itype_id iid = it.get_id();

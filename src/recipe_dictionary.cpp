@@ -420,11 +420,11 @@ std::vector<const recipe *> recipe_subset::search(
     // search
     std::vector<const recipe *> res;
     size_t i = 0;
-    ctxt.register_action( "QUIT" );
     std::chrono::steady_clock::time_point next_input_check = std::chrono::steady_clock::now();
     for( const recipe *r : recipes ) {
         if( std::chrono::steady_clock::now() > next_input_check ) {
             next_input_check = std::chrono::steady_clock::now() + std::chrono::milliseconds( 250 );
+            ctxt.register_action( "QUIT" );
             if( ctxt.handle_input( 1 ) == "QUIT" ) {
                 return res;
             }
