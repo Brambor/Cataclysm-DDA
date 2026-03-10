@@ -228,10 +228,7 @@ bool avatar::is_map_memory_valid() const
 
 bool avatar::should_show_map_memory() const
 {
-    if( !you_know_where_you_are() ) {
-        return false;
-    }
-    return true;
+    return you_know_where_you_are();
 }
 
 bool avatar::save_map_memory()
